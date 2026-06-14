@@ -608,10 +608,10 @@ export default function Home() {
     return s + base * (boostActive && Date.now() < boostEndTime ? 2 : 1);
   }, 0);
 
-  const maxTierInGrid: TierId = grid.reduce((m, c) => {
+  const maxTierInGrid = grid.reduce((m, c) => {
     if (c && c.tier > m) return c.tier;
     return m;
-  }, 0) as TierId;
+  }, 0);
 
   const walkingTiers = maxTierInGrid > 0
     ? CHICKEN_TIERS.slice(0, maxTierInGrid)
