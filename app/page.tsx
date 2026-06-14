@@ -20,7 +20,14 @@ interface GridCell {
   id: number;
 }
 
-type Screen = "main" | "farm" | "dig" | "spin" | "tasks" | "shop";
+type Screen = "main" | "farm" | "dig" | "spin" | "tasks" | "shop" | "leaderboard";
+
+interface LeaderEntry {
+  name: string;
+  eggs: number;
+  maxTier: number;
+  date: string;
+}
 
 interface Toast {
   msg: string;
@@ -132,6 +139,7 @@ function getTier(tier: TierId): ChickenTier {
 }
 
 const SAVE_KEY = "ayam-petarung-v3";
+const LEADER_KEY = "ayam-petarung-leaderboard";
 
 function loadSave(): Record<string, unknown> | null {
   try {
@@ -300,6 +308,10 @@ export default function Home() {
 
   const [musicOn, setMusicOn] = useState(false);
 
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [playerName, setPlayerName]   = useState("");
+  const [nameInput, setNameInput]     = useState("");
+
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const bgStopRef    = useRef<(() => void) | null>(null);
   const floatId      = useRef(0);
@@ -329,6 +341,12 @@ export default function Home() {
     if (typeof s.checkinDate === "string")  setCheckinDate(s.checkinDate);
     if (typeof s.taps === "number")         setTaps(s.taps);
     if (typeof s.totalEarned === "number")  setTotalEarned(s.totalEarned);
+    if (typeof s.playerName === "string")   setPlayerName(s.playerName);
+    // Load leaderboard from separate key
+    try {
+      const lb = localStorage.getItem(LEADER_KEY);
+      if (lb) setLeaderboard(JSON.parse(lb) as LeaderEntry[]);
+    } catch {}
   }, []);
 
   // ── Save ──
@@ -337,10 +355,10 @@ export default function Home() {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         eggs, worms, cekers, grid, boostEndTime, autoMerge,
         spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
-        checkinDay, checkinDate, taps, totalEarned,
+        checkinDay, checkinDate, taps, totalEarned, playerName,
       }));
     } catch {}
-  }, [eggs, worms, cekers, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned]);
+  }, [eggs, worms, cekers, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName]);
 
   // ── Reset spin daily ──
   useEffect(() => {
@@ -619,6 +637,32 @@ export default function Home() {
     showToast("Kandang dikosongkan!", "info");
   }
 
+  // ── Leaderboard ──
+  function submitScore() {
+    const name = nameInput.trim() || "Pemain";
+    const entry: LeaderEntry = {
+      name,
+      eggs: Math.floor(totalEarned),
+      maxTier: maxTierInGrid,
+      date: todayStr(),
+    };
+    setPlayerName(name);
+    setNameInput("");
+    setLeaderboard(prev => {
+      const filtered = prev.filter(e => e.name !== name);
+      const updated  = [...filtered, entry].sort((a, b) => b.eggs - a.eggs).slice(0, 20);
+      try { localStorage.setItem(LEADER_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    showToast(`Skor ${name} disimpan! 🏆`, "success");
+  }
+
+  function clearLeaderboard() {
+    setLeaderboard([]);
+    try { localStorage.removeItem(LEADER_KEY); } catch {}
+    showToast("Leaderboard direset!", "info");
+  }
+
   // ── Derived values ──
   const totalIdle = grid.reduce((s, c) => {
     if (!c) return s;
@@ -639,12 +683,13 @@ export default function Home() {
 
   // ─── NAV ITEMS ────────────────────────────────────────────────────────────
   const navItems: { key: Screen; label: string; emoji: string; bg: string; border: string }[] = [
-    { key: "main",  label: "Home",    emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
-    { key: "farm",  label: "Kandang", emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
-    { key: "dig",   label: "Scratch", emoji: "🐾", bg: "#1a2a10", border: "#4a7a1a" },
-    { key: "spin",  label: "Spin",    emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
-    { key: "tasks", label: "Misi",    emoji: "📋", bg: "#3a1a10", border: "#c07820" },
-    { key: "shop",  label: "Shop",    emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
+    { key: "main",        label: "Home",       emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
+    { key: "farm",        label: "Kandang",    emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
+    { key: "dig",         label: "Scratch",    emoji: "🐾", bg: "#1a2a10", border: "#4a7a1a" },
+    { key: "spin",        label: "Spin",       emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
+    { key: "tasks",       label: "Misi",       emoji: "📋", bg: "#3a1a10", border: "#c07820" },
+    { key: "shop",        label: "Shop",       emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
+    { key: "leaderboard", label: "Ranking",    emoji: "🏆", bg: "#1a1a00", border: "#a16207" },
   ];
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -785,13 +830,10 @@ export default function Home() {
             </button>
             <div style={{ fontSize: 12, color: "#9ca3af" }}>Tap untuk generate ayam baru! ({HATCH_COST}🥚)</div>
 
-            {/* Kandang action buttons */}
-            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {/* Kandang action button */}
+            <div style={{ width: "100%" }}>
               <button onClick={buyAutoMerge} disabled={autoMerge} style={{ ...bStyle("#7c3aed", "#6d28d9"), opacity: autoMerge ? 0.5 : 1 }}>
-                {autoMerge ? "✅ Auto-Merge ON" : `🤖 Auto-Merge (${AUTOMERGE_COST_WORMS}🪱)`}
-              </button>
-              <button onClick={clearGrid} style={bStyle("#7f1d1d", "#b91c1c")}>
-                🗑️ Hapus Kandang
+                {autoMerge ? "✅ Auto-Merge Aktif" : `🤖 Aktifkan Auto-Merge (${AUTOMERGE_COST_WORMS}🪱)`}
               </button>
             </div>
 
@@ -1058,6 +1100,88 @@ export default function Home() {
                 Auto-merge: <b style={{ color: autoMerge ? "#86efac" : "#9ca3af" }}>{autoMerge ? "Aktif" : "Tidak aktif"}</b>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* LEADERBOARD */}
+        {screen === "leaderboard" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24" }}>🏆 Leaderboard Pemain</div>
+
+            {/* Submit score card */}
+            <div style={{ background: "#111130", border: "1px solid #a16207", borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 13, color: "#d1d5db", marginBottom: 8, fontWeight: 600 }}>
+                {playerName ? `👤 Pemain: ${playerName}` : "Masukkan namamu dan simpan skor"}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  placeholder={playerName || "Nama pemain..."}
+                  maxLength={20}
+                  style={{
+                    flex: 1, background: "#1e1e40", border: "1px solid #3d3d6e",
+                    borderRadius: 8, color: "#f0e6c8", padding: "8px 10px", fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+                <button onClick={submitScore} style={{ ...bStyle("#a16207", "#d97706"), width: "auto", padding: "8px 16px", whiteSpace: "nowrap" }}>
+                  💾 Simpan
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: "#6b7280" }}>
+                Skormu sekarang: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</b>
+                {maxTierInGrid > 0 && <span>  |  Tier maks: <b style={{ color: getTier(maxTierInGrid as TierId).rarityColor }}>{getTier(maxTierInGrid as TierId).emoji} {getTier(maxTierInGrid as TierId).name}</b></span>}
+              </div>
+            </div>
+
+            {/* Leaderboard table */}
+            <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 14, padding: 14 }}>
+              {leaderboard.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#6b7280", fontSize: 13, padding: "20px 0" }}>
+                  Belum ada pemain terdaftar.<br />Simpan skormu untuk masuk ranking!
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {leaderboard.map((entry, i) => {
+                    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                    const isMe  = entry.name === playerName;
+                    const tier  = entry.maxTier > 0 ? getTier(entry.maxTier as TierId) : null;
+                    return (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        background: isMe ? "#1e2a10" : "#0e0e28",
+                        border: `1px solid ${isMe ? "#4a7a1a" : "#1e1e40"}`,
+                        borderRadius: 10, padding: "8px 10px",
+                      }}>
+                        <span style={{ fontSize: 16, minWidth: 28, textAlign: "center" }}>{medal}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: isMe ? "#86efac" : "#f0e6c8" }}>
+                            {entry.name}{isMe && " (Kamu)"}
+                          </div>
+                          <div style={{ fontSize: 10, color: "#6b7280" }}>{entry.date}</div>
+                        </div>
+                        {tier && (
+                          <span style={{ fontSize: 11, color: tier.rarityColor, background: "#1e1e40", padding: "2px 6px", borderRadius: 6 }}>
+                            {tier.emoji} T{entry.maxTier}
+                          </span>
+                        )}
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: "#fbbf24" }}>{entry.eggs.toLocaleString()}</div>
+                          <div style={{ fontSize: 9, color: "#6b7280" }}>🥚 telur</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {leaderboard.length > 0 && (
+              <button onClick={clearLeaderboard} style={{ ...bStyle("#1e1e40", "#3d3d6e"), fontSize: 12 }}>
+                🗑️ Reset Leaderboard
+              </button>
+            )}
           </div>
         )}
 
