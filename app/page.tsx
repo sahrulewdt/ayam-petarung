@@ -10,19 +10,16 @@ const CHICKEN_TYPES = {
     eggsPerTap: 1,
     upgradeCost: 500,
   },
-
   RARE: {
     name: "Rare",
     eggsPerTap: 3,
     upgradeCost: 5000,
   },
-
   EPIC: {
     name: "Epic",
     eggsPerTap: 7,
     upgradeCost: 50000,
   },
-
   LEGENDARY: {
     name: "Legendary",
     eggsPerTap: 15,
@@ -35,17 +32,14 @@ const COOP_LEVELS = {
     productionPerMinute: 0,
     cost: 1000,
   },
-
   2: {
     productionPerMinute: 1,
     cost: 3000,
   },
-
   3: {
     productionPerMinute: 3,
     cost: 10000,
   },
-
   4: {
     productionPerMinute: 10,
     cost: 0,
@@ -61,22 +55,18 @@ type ChickenType =
 export default function Home() {
   const [eggs, setEggs] = useState(0);
   const [energy, setEnergy] = useState(MAX_ENERGY);
-
   const [coopLevel, setCoopLevel] = useState(1);
+  const [floating, setFloating] = useState(false);
 
   const [chickenType, setChickenType] =
     useState<ChickenType>("COMMON");
 
-  const [floating, setFloating] = useState(false);
-
   const eggsPerTap =
     CHICKEN_TYPES[chickenType].eggsPerTap;
 
-  // LOAD SAVE
   useEffect(() => {
-    const save = localStorage.getItem(
-      "ayam-petarung"
-    );
+    const save =
+      localStorage.getItem("ayam-petarung");
 
     if (!save) return;
 
@@ -90,7 +80,6 @@ export default function Home() {
     );
   }, []);
 
-  // SAVE
   useEffect(() => {
     localStorage.setItem(
       "ayam-petarung",
@@ -108,7 +97,6 @@ export default function Home() {
     chickenType,
   ]);
 
-  // ENERGY REGEN
   useEffect(() => {
     const interval = setInterval(() => {
       setEnergy((prev) =>
@@ -119,7 +107,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // AUTO FARM
   useEffect(() => {
     const interval = setInterval(() => {
       const production =
@@ -137,14 +124,13 @@ export default function Home() {
     if (energy <= 0) return;
 
     setEggs((prev) => prev + eggsPerTap);
-
     setEnergy((prev) => prev - 1);
 
     setFloating(true);
 
     setTimeout(() => {
       setFloating(false);
-    }, 400);
+    }, 500);
   };
 
   const upgradeChicken = () => {
@@ -175,12 +161,14 @@ export default function Home() {
       return;
     }
 
-    alert("Telur tidak cukup atau sudah maksimal");
+    alert(
+      "Telur tidak cukup atau ayam sudah maksimal."
+    );
   };
 
   const upgradeCoop = () => {
     if (coopLevel >= 4) {
-      alert("Kandang sudah maksimal");
+      alert("Kandang sudah maksimal.");
       return;
     }
 
@@ -190,13 +178,38 @@ export default function Home() {
       ].cost;
 
     if (eggs < cost) {
-      alert("Telur tidak cukup");
+      alert("Telur tidak cukup.");
       return;
     }
 
     setEggs((prev) => prev - cost);
     setCoopLevel((prev) => prev + 1);
   };
+
+  const nextChickenCost =
+    chickenType === "COMMON"
+      ? 500
+      : chickenType === "RARE"
+      ? 5000
+      : chickenType === "EPIC"
+      ? 50000
+      : 0;
+
+  const nextChickenName =
+    chickenType === "COMMON"
+      ? "Rare"
+      : chickenType === "RARE"
+      ? "Epic"
+      : chickenType === "EPIC"
+      ? "Legendary"
+      : "MAX";
+
+  const coopCost =
+    coopLevel < 4
+      ? COOP_LEVELS[
+          coopLevel as keyof typeof COOP_LEVELS
+        ].cost
+      : 0;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-green-200 to-green-500 p-4">
@@ -226,38 +239,55 @@ export default function Home() {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow mb-4">
-          <div>
-            🐔 Ayam:
-            {" "}
-            {CHICKEN_TYPES[chickenType].name}
+
+          <div className="flex justify-between">
+            <span>🐔 Status Ayam</span>
+
+            <span
+              className={`font-bold ${
+                chickenType === "COMMON"
+                  ? "text-gray-600"
+                  : chickenType === "RARE"
+                  ? "text-blue-600"
+                  : chickenType === "EPIC"
+                  ? "text-purple-600"
+                  : "text-yellow-600"
+              }`}
+            >
+              {
+                CHICKEN_TYPES[chickenType].name
+              }
+            </span>
           </div>
 
           <div className="mt-2">
-            🥚 Per Tap:
-            {" "}
-            {eggsPerTap}
+            🥚 Per Tap: <b>{eggsPerTap}</b>
           </div>
 
           <div className="mt-2">
-            🏠 Kandang Lv.{coopLevel}
+            🏠 Kandang: <b>Lv.{coopLevel}</b>
           </div>
 
           <div className="mt-2">
-            ⏱ Auto:
-            {" "}
-            {
-              COOP_LEVELS[
-                coopLevel as keyof typeof COOP_LEVELS
-              ].productionPerMinute
-            }
+            ⏱ Auto Farm:
+            <b>
+              {" "}
+              {
+                COOP_LEVELS[
+                  coopLevel as keyof typeof COOP_LEVELS
+                ].productionPerMinute
+              }
+            </b>
             {" "}
             telur/menit
           </div>
+
         </div>
 
         <div className="relative flex justify-center my-10">
+
           {floating && (
-            <div className="absolute -top-10 text-2xl font-bold">
+            <div className="absolute -top-10 text-2xl font-bold animate-bounce">
               +{eggsPerTap} 🥚
             </div>
           )}
@@ -268,22 +298,81 @@ export default function Home() {
           >
             🐔
           </button>
+
         </div>
 
         <div className="grid grid-cols-2 gap-3">
 
           <button
             onClick={upgradeChicken}
-            className="bg-yellow-400 rounded-xl p-4 font-bold shadow"
+            disabled={
+              chickenType === "LEGENDARY" ||
+              eggs < nextChickenCost
+            }
+            className="bg-yellow-400 rounded-xl p-4 font-bold shadow disabled:opacity-50"
           >
-            Upgrade Ayam
+            🐔 Upgrade Ayam
+
+            <div className="text-sm mt-2">
+              {chickenType ===
+              "LEGENDARY"
+                ? "MAX LEVEL"
+                : `${CHICKEN_TYPES[chickenType].name} → ${nextChickenName}`}
+            </div>
+
+            {chickenType !==
+              "LEGENDARY" && (
+              <>
+                <div className="text-sm mt-1">
+                  Cost:
+                  {" "}
+                  {nextChickenCost.toLocaleString()}
+                  {" "}
+                  🥚
+                </div>
+
+                <div className="text-xs">
+                  {eggs.toLocaleString()}
+                  {" / "}
+                  {nextChickenCost.toLocaleString()}
+                </div>
+              </>
+            )}
           </button>
 
           <button
             onClick={upgradeCoop}
-            className="bg-blue-400 rounded-xl p-4 font-bold shadow"
+            disabled={
+              coopLevel >= 4 ||
+              eggs < coopCost
+            }
+            className="bg-blue-400 rounded-xl p-4 font-bold shadow disabled:opacity-50"
           >
-            Upgrade Kandang
+            🏠 Upgrade Kandang
+
+            <div className="text-sm mt-2">
+              {coopLevel >= 4
+                ? "MAX LEVEL"
+                : `Lv.${coopLevel} → Lv.${coopLevel + 1}`}
+            </div>
+
+            {coopLevel < 4 && (
+              <>
+                <div className="text-sm mt-1">
+                  Cost:
+                  {" "}
+                  {coopCost.toLocaleString()}
+                  {" "}
+                  🥚
+                </div>
+
+                <div className="text-xs">
+                  {eggs.toLocaleString()}
+                  {" / "}
+                  {coopCost.toLocaleString()}
+                </div>
+              </>
+            )}
           </button>
 
         </div>
