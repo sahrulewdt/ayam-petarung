@@ -74,8 +74,10 @@ const CHICKEN_TIERS: ChickenTier[] = [
 
 const GRID_SIZE = 15;
 const HATCH_COST = 30;
-const BOOST_COST = 200;
-const WORM_COST  = 50;
+const BOOST_COST_WORMS = 10;
+const AUTOMERGE_COST_WORMS = 5;
+const SHOVEL_COST_EGGS = 40;
+const SHOVEL_PACK_COST = 150;
 const BOOST_DURATION_MS = 5 * 60 * 1000;
 
 const SPIN_REWARDS: SpinReward[] = [
@@ -101,7 +103,7 @@ const DIG_REWARDS: DigReward[] = [
 ];
 
 const DAILY_TASKS: TaskDef[] = [
-  { id: "tap100",  label: "Tap 100x",             type: "tap",   target: 100, rewardEggs: 300, rewardWorms: 5  },
+  { id: "tap100",  label: "Generate Ayam 5x",      type: "tap",   target: 5,   rewardEggs: 300, rewardWorms: 5  },
   { id: "merge3",  label: "Merge 3x",              type: "merge", target: 3,   rewardEggs: 200, rewardWorms: 8  },
   { id: "dig5",    label: "Gali 5x",               type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
   { id: "earn500", label: "Kumpulkan 500 🥚",      type: "earn",  target: 500, rewardEggs: 400, rewardWorms: 0  },
@@ -267,8 +269,9 @@ function Walker({ tier, index }: WalkerItemProps) {
 export default function Home() {
   const [eggs, setEggs]           = useState<number>(50);
   const [worms, setWorms]         = useState<number>(10);
+  const [shovels, setShovels]     = useState<number>(3);
   const [grid, setGrid]           = useState<(GridCell | null)[]>(Array(GRID_SIZE).fill(null));
-  const [screen, setScreen]       = useState<Screen>("main");
+  const [screen, setScreen]       = useState<Screen>("farm");
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
 
   const [boostActive, setBoostActive]   = useState(false);
@@ -310,6 +313,7 @@ export default function Home() {
     if (!s) return;
     if (typeof s.eggs === "number")         setEggs(s.eggs);
     if (typeof s.worms === "number")        setWorms(s.worms);
+    if (typeof s.shovels === "number")      setShovels(s.shovels);
     if (Array.isArray(s.grid))              setGrid(s.grid as (GridCell | null)[]);
     if (typeof s.boostEndTime === "number") {
       setBoostEndTime(s.boostEndTime as number);
@@ -330,12 +334,12 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        eggs, worms, grid, boostEndTime, autoMerge,
+        eggs, worms, shovels, grid, boostEndTime, autoMerge,
         spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
         checkinDay, checkinDate, taps, totalEarned,
       }));
     } catch {}
-  }, [eggs, worms, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned]);
+  }, [eggs, worms, shovels, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned]);
 
   // ── Reset spin daily ──
   useEffect(() => {
@@ -459,6 +463,7 @@ export default function Home() {
     if (empty === -1) { showToast("Grid penuh!", "err"); return; }
     setEggs(e => e - HATCH_COST);
     setGrid(g => { const n = [...g]; n[empty] = { tier: 1, id: Date.now() }; return n; });
+    trackTask("tap");
     showToast("Ayam baru menetas! 🐣");
   }
 
@@ -737,19 +742,20 @@ export default function Home() {
               <div style={{ fontSize: 12, color: "#6b7280" }}>🥚</div>
             </div>
 
-            <button onClick={tapMain} style={{
+            <button onClick={hatchChicken} style={{
               width: 160, height: 160, borderRadius: "50%",
               background: "#111130", border: "4px solid #fbbf24",
-              fontSize: 72, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 52, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
               animation: "pulse 2s infinite",
             }}>
-              🐓
+              <span>🐣</span>
+              <span style={{ fontSize: 13, color: "#fbbf24", fontWeight: 800 }}>Generate</span>
             </button>
-            <div style={{ fontSize: 13, color: "#9ca3af" }}>TAP untuk dapat telur!</div>
+            <div style={{ fontSize: 13, color: "#9ca3af" }}>Tap untuk generate ayam baru! ({HATCH_COST}🥚)</div>
 
             <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button onClick={() => setScreen("farm")} style={bStyle("#14532d", "#166534")}>🐔 Kandang Merge</button>
               <button onClick={() => setScreen("dig")}  style={bStyle("#1e3a5f", "#1d4ed8")}>⛏️ Menggali</button>
+              <button onClick={() => setScreen("spin")} style={bStyle("#7c3aed", "#6d28d9")}>🎡 Spin</button>
             </div>
 
             {/* Tier legend */}
@@ -1012,7 +1018,7 @@ export default function Home() {
             <div style={{ background: "#111130", border: "1px solid #1e3a5f", borderRadius: 14, padding: 14 }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📊 Statistik</div>
               <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 2.2 }}>
-                Total tap: <b style={{ color: "#fbbf24" }}>{taps.toLocaleString()}</b><br />
+                Total generate ayam: <b style={{ color: "#fbbf24" }}>{taps.toLocaleString()}</b><br />
                 Total telur diperoleh: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()}</b><br />
                 Ayam di kandang: <b style={{ color: "#fbbf24" }}>{chickenCount}</b><br />
                 Tier tertinggi: <b style={{ color: "#fbbf24" }}>{maxTierInGrid > 0 ? `${getTier(maxTierInGrid as TierId).emoji} ${getTier(maxTierInGrid as TierId).name}` : "—"}</b><br />
