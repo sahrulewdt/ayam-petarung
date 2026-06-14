@@ -86,12 +86,7 @@ export default function Home() {
         chickenType,
       })
     );
-  }, [
-    eggs,
-    energy,
-    coopLevel,
-    chickenType,
-  ]);
+  }, [eggs, energy, coopLevel, chickenType]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -130,28 +125,19 @@ export default function Home() {
   };
 
   const upgradeChicken = () => {
-    if (
-      chickenType === "COMMON" &&
-      eggs >= 500
-    ) {
+    if (chickenType === "COMMON" && eggs >= 500) {
       setEggs((prev) => prev - 500);
       setChickenType("RARE");
       return;
     }
 
-    if (
-      chickenType === "RARE" &&
-      eggs >= 5000
-    ) {
+    if (chickenType === "RARE" && eggs >= 5000) {
       setEggs((prev) => prev - 5000);
       setChickenType("EPIC");
       return;
     }
 
-    if (
-      chickenType === "EPIC" &&
-      eggs >= 50000
-    ) {
+    if (chickenType === "EPIC" && eggs >= 50000) {
       setEggs((prev) => prev - 50000);
       setChickenType("LEGENDARY");
       return;
@@ -196,45 +182,61 @@ export default function Home() {
         ].cost
       : 0;
 
+  const nextChickenType: Record<ChickenType, ChickenType | null> = {
+    COMMON: "RARE",
+    RARE: "EPIC",
+    EPIC: "LEGENDARY",
+    LEGENDARY: null,
+  };
+
+  const nextChicken = nextChickenType[chickenType];
+  const nextChickenEggsPerTap = nextChicken
+    ? CHICKEN_TYPES[nextChicken].eggsPerTap
+    : null;
+
+  const nextCoopLevel = coopLevel < 4 ? coopLevel + 1 : null;
+  const nextCoopProduction = nextCoopLevel
+    ? COOP_LEVELS[nextCoopLevel as keyof typeof COOP_LEVELS].productionPerMinute
+    : null;
+
   return (
-    <main className="min-h-screen bg-[#04153A] text-white p-4">
+    <main className="h-screen bg-[#04153A] text-white p-2 overflow-hidden flex flex-col">
 
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto w-full flex flex-col gap-2 flex-1">
 
-        <div className="border-4 border-yellow-500 rounded-2xl p-4 text-center bg-[#07204D] shadow-xl">
-          <h1 className="text-4xl font-black text-yellow-400">
+        {/* Header */}
+        <div className="border-2 border-yellow-500 rounded-xl px-3 py-1.5 text-center bg-[#07204D] shadow-xl">
+          <h1 className="text-2xl font-black text-yellow-400">
             AYAM PETARUNG
           </h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-3 gap-2">
 
-          <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-3 text-center">
-            <div className="text-xs text-yellow-300">
-              EARN
+          <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-2 text-center">
+            <div className="text-[10px] text-yellow-300 leading-tight">
+              EARN PER TAP
             </div>
-
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               +{eggsPerTap}
             </div>
           </div>
 
-          <div className="bg-[#081B46] border border-cyan-500 rounded-xl p-3 text-center">
-            <div className="text-xs text-cyan-300">
+          <div className="bg-[#081B46] border border-cyan-500 rounded-xl p-2 text-center">
+            <div className="text-[10px] text-cyan-300 leading-tight">
               KANDANG
             </div>
-
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               Lv.{coopLevel}
             </div>
           </div>
 
-          <div className="bg-[#081B46] border border-red-500 rounded-xl p-3 text-center">
-            <div className="text-xs text-red-300">
-              AUTO
+          <div className="bg-[#081B46] border border-red-500 rounded-xl p-2 text-center">
+            <div className="text-[10px] text-red-300 leading-tight">
+              AUTO/MIN
             </div>
-
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {
                 COOP_LEVELS[
                   coopLevel as keyof typeof COOP_LEVELS
@@ -245,26 +247,28 @@ export default function Home() {
 
         </div>
 
-        <div className="text-center mt-6">
-          <div className="text-yellow-300 text-xl font-bold">
+        {/* Egg Count */}
+        <div className="text-center">
+          <div className="text-yellow-300 text-sm font-bold">
             🥚 TELUR
           </div>
-
-          <div className="text-6xl font-black text-yellow-400">
+          <div className="text-5xl font-black text-yellow-400 leading-none">
             {eggs.toLocaleString()}
           </div>
         </div>
 
-        <div className="text-center mt-4">
-          <span className="bg-red-700 px-4 py-2 rounded-xl font-bold">
+        {/* Chicken Type Badge */}
+        <div className="text-center">
+          <span className="bg-red-700 px-3 py-1 rounded-xl font-bold text-sm">
             {CHICKEN_TYPES[chickenType].name}
           </span>
         </div>
 
-        <div className="relative flex justify-center mt-6">
+        {/* Chicken Button */}
+        <div className="relative flex justify-center flex-1 items-center">
 
           {floating && (
-            <div className="absolute -top-10 text-3xl font-bold text-yellow-300 animate-bounce">
+            <div className="absolute top-0 text-2xl font-bold text-yellow-300 animate-bounce z-10">
               +{eggsPerTap}
             </div>
           )}
@@ -273,64 +277,85 @@ export default function Home() {
             onClick={tapChicken}
             className="active:scale-95 transition"
           >
-            <div className="w-72 h-72 rounded-full border-8 border-yellow-400 bg-[#081B46] flex items-center justify-center shadow-2xl">
-
+            <div className="w-44 h-44 rounded-full border-[6px] border-yellow-400 bg-[#081B46] flex items-center justify-center shadow-2xl">
               <img
-                src="/images/chicken.png"
-                alt="Chicken"
-                className="w-56"
+                src={`/images/chicken-${chickenType.toLowerCase()}.png`}
+                alt={`${CHICKEN_TYPES[chickenType].name} Chicken`}
+                className="w-32"
               />
-
             </div>
           </button>
 
         </div>
 
-        <div className="text-center text-4xl font-black text-yellow-400 mt-2">
+        <div className="text-center text-2xl font-black text-yellow-400 -mt-1">
           TAP DISINI
         </div>
 
-        <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-4 mt-6">
-
-          <div className="font-bold">
+        {/* Energy Bar */}
+        <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-2.5">
+          <div className="font-bold text-sm">
             ⚡ Energi {energy}/{MAX_ENERGY}
           </div>
-
-          <div className="w-full bg-slate-900 rounded-full h-4 mt-3">
-
+          <div className="w-full bg-slate-900 rounded-full h-3 mt-1.5">
             <div
-              className="bg-cyan-400 h-4 rounded-full"
+              className="bg-cyan-400 h-3 rounded-full"
               style={{
                 width: `${(energy / MAX_ENERGY) * 100}%`,
               }}
             />
-
           </div>
-
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-6">
+        {/* Upgrade Buttons */}
+        <div className="grid grid-cols-2 gap-3 pb-2">
 
           <button
             onClick={upgradeChicken}
-            className="bg-gradient-to-b from-red-500 to-red-800 rounded-2xl p-4 font-black text-yellow-300"
+            className="bg-gradient-to-b from-red-500 to-red-800 rounded-xl p-3 font-black text-yellow-300 text-sm"
           >
             UPGRADE AYAM
-
-            <div className="text-sm mt-2">
-              {nextChickenCost.toLocaleString()} 🥚
-            </div>
+            {nextChicken ? (
+              <>
+                <div className="text-[10px] font-normal text-yellow-100 mt-1">
+                  {CHICKEN_TYPES[chickenType].name} → {CHICKEN_TYPES[nextChicken].name}
+                </div>
+                <div className="text-[10px] font-normal text-yellow-100">
+                  +{eggsPerTap} → +{nextChickenEggsPerTap} per tap
+                </div>
+                <div className="text-xs mt-1">
+                  {nextChickenCost.toLocaleString()} 🥚
+                </div>
+              </>
+            ) : (
+              <div className="text-xs mt-1 font-normal text-yellow-100">
+                Sudah MAX
+              </div>
+            )}
           </button>
 
           <button
             onClick={upgradeCoop}
-            className="bg-gradient-to-b from-blue-500 to-blue-800 rounded-2xl p-4 font-black text-yellow-300"
+            className="bg-gradient-to-b from-blue-500 to-blue-800 rounded-xl p-3 font-black text-yellow-300 text-sm"
           >
             UPGRADE KANDANG
-
-            <div className="text-sm mt-2">
-              {coopCost.toLocaleString()} 🥚
-            </div>
+            {nextCoopLevel ? (
+              <>
+                <div className="text-[10px] font-normal text-yellow-100 mt-1">
+                  Lv.{coopLevel} → Lv.{nextCoopLevel}
+                </div>
+                <div className="text-[10px] font-normal text-yellow-100">
+                  Auto {COOP_LEVELS[coopLevel as keyof typeof COOP_LEVELS].productionPerMinute} → {nextCoopProduction}/min
+                </div>
+                <div className="text-xs mt-1">
+                  {coopCost.toLocaleString()} 🥚
+                </div>
+              </>
+            ) : (
+              <div className="text-xs mt-1 font-normal text-yellow-100">
+                Sudah MAX
+              </div>
+            )}
           </button>
 
         </div>
