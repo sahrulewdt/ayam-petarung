@@ -8,22 +8,18 @@ const CHICKEN_TYPES = {
   COMMON: {
     name: "Common",
     eggsPerTap: 1,
-    upgradeCost: 500,
   },
   RARE: {
     name: "Rare",
     eggsPerTap: 3,
-    upgradeCost: 5000,
   },
   EPIC: {
     name: "Epic",
     eggsPerTap: 7,
-    upgradeCost: 50000,
   },
   LEGENDARY: {
     name: "Legendary",
     eggsPerTap: 15,
-    upgradeCost: 0,
   },
 };
 
@@ -161,14 +157,12 @@ export default function Home() {
       return;
     }
 
-    alert(
-      "Telur tidak cukup atau ayam sudah maksimal."
-    );
+    alert("Telur tidak cukup atau sudah MAX");
   };
 
   const upgradeCoop = () => {
     if (coopLevel >= 4) {
-      alert("Kandang sudah maksimal.");
+      alert("Kandang sudah MAX");
       return;
     }
 
@@ -178,7 +172,7 @@ export default function Home() {
       ].cost;
 
     if (eggs < cost) {
-      alert("Telur tidak cukup.");
+      alert("Telur tidak cukup");
       return;
     }
 
@@ -195,15 +189,6 @@ export default function Home() {
       ? 50000
       : 0;
 
-  const nextChickenName =
-    chickenType === "COMMON"
-      ? "Rare"
-      : chickenType === "RARE"
-      ? "Epic"
-      : chickenType === "EPIC"
-      ? "Legendary"
-      : "MAX";
-
   const coopCost =
     coopLevel < 4
       ? COOP_LEVELS[
@@ -212,172 +197,146 @@ export default function Home() {
       : 0;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-200 to-green-500 p-4">
+    <main className="min-h-screen bg-[#04153A] text-white p-4">
+
       <div className="max-w-md mx-auto">
 
-        <h1 className="text-center text-4xl font-bold mb-6">
-          🐔 Ayam Petarung
-        </h1>
-
-        <div className="bg-white rounded-xl p-4 shadow mb-4">
-          <div className="text-3xl font-bold">
-            🥚 {eggs.toLocaleString()}
-          </div>
-
-          <div className="mt-3">
-            ⚡ {energy}/{MAX_ENERGY}
-          </div>
-
-          <div className="w-full bg-gray-200 h-3 rounded-full mt-2">
-            <div
-              className="bg-yellow-400 h-3 rounded-full"
-              style={{
-                width: `${(energy / MAX_ENERGY) * 100}%`,
-              }}
-            />
-          </div>
+        <div className="border-4 border-yellow-500 rounded-2xl p-4 text-center bg-[#07204D] shadow-xl">
+          <h1 className="text-4xl font-black text-yellow-400">
+            AYAM PETARUNG
+          </h1>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow mb-4">
+        <div className="grid grid-cols-3 gap-2 mt-4">
 
-          <div className="flex justify-between">
-            <span>🐔 Status Ayam</span>
+          <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-3 text-center">
+            <div className="text-xs text-yellow-300">
+              EARN
+            </div>
 
-            <span
-              className={`font-bold ${
-                chickenType === "COMMON"
-                  ? "text-gray-600"
-                  : chickenType === "RARE"
-                  ? "text-blue-600"
-                  : chickenType === "EPIC"
-                  ? "text-purple-600"
-                  : "text-yellow-600"
-              }`}
-            >
-              {
-                CHICKEN_TYPES[chickenType].name
-              }
-            </span>
+            <div className="text-2xl font-bold">
+              +{eggsPerTap}
+            </div>
           </div>
 
-          <div className="mt-2">
-            🥚 Per Tap: <b>{eggsPerTap}</b>
+          <div className="bg-[#081B46] border border-cyan-500 rounded-xl p-3 text-center">
+            <div className="text-xs text-cyan-300">
+              KANDANG
+            </div>
+
+            <div className="text-2xl font-bold">
+              Lv.{coopLevel}
+            </div>
           </div>
 
-          <div className="mt-2">
-            🏠 Kandang: <b>Lv.{coopLevel}</b>
-          </div>
+          <div className="bg-[#081B46] border border-red-500 rounded-xl p-3 text-center">
+            <div className="text-xs text-red-300">
+              AUTO
+            </div>
 
-          <div className="mt-2">
-            ⏱ Auto Farm:
-            <b>
-              {" "}
+            <div className="text-2xl font-bold">
               {
                 COOP_LEVELS[
                   coopLevel as keyof typeof COOP_LEVELS
                 ].productionPerMinute
               }
-            </b>
-            {" "}
-            telur/menit
+            </div>
           </div>
 
         </div>
 
-        <div className="relative flex justify-center my-10">
+        <div className="text-center mt-6">
+          <div className="text-yellow-300 text-xl font-bold">
+            🥚 TELUR
+          </div>
+
+          <div className="text-6xl font-black text-yellow-400">
+            {eggs.toLocaleString()}
+          </div>
+        </div>
+
+        <div className="text-center mt-4">
+          <span className="bg-red-700 px-4 py-2 rounded-xl font-bold">
+            {CHICKEN_TYPES[chickenType].name}
+          </span>
+        </div>
+
+        <div className="relative flex justify-center mt-6">
 
           {floating && (
-            <div className="absolute -top-10 text-2xl font-bold animate-bounce">
-              +{eggsPerTap} 🥚
+            <div className="absolute -top-10 text-3xl font-bold text-yellow-300 animate-bounce">
+              +{eggsPerTap}
             </div>
           )}
 
           <button
             onClick={tapChicken}
-            className="text-[140px] active:scale-90 transition"
+            className="active:scale-95 transition"
           >
-            🐔
+            <div className="w-72 h-72 rounded-full border-8 border-yellow-400 bg-[#081B46] flex items-center justify-center shadow-2xl">
+
+              <img
+                src="/images/chicken.png"
+                alt="Chicken"
+                className="w-56"
+              />
+
+            </div>
           </button>
 
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="text-center text-4xl font-black text-yellow-400 mt-2">
+          TAP DISINI
+        </div>
+
+        <div className="bg-[#081B46] border border-yellow-500 rounded-xl p-4 mt-6">
+
+          <div className="font-bold">
+            ⚡ Energi {energy}/{MAX_ENERGY}
+          </div>
+
+          <div className="w-full bg-slate-900 rounded-full h-4 mt-3">
+
+            <div
+              className="bg-cyan-400 h-4 rounded-full"
+              style={{
+                width: `${(energy / MAX_ENERGY) * 100}%`,
+              }}
+            />
+
+          </div>
+
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-6">
 
           <button
             onClick={upgradeChicken}
-            disabled={
-              chickenType === "LEGENDARY" ||
-              eggs < nextChickenCost
-            }
-            className="bg-yellow-400 rounded-xl p-4 font-bold shadow disabled:opacity-50"
+            className="bg-gradient-to-b from-red-500 to-red-800 rounded-2xl p-4 font-black text-yellow-300"
           >
-            🐔 Upgrade Ayam
+            UPGRADE AYAM
 
             <div className="text-sm mt-2">
-              {chickenType ===
-              "LEGENDARY"
-                ? "MAX LEVEL"
-                : `${CHICKEN_TYPES[chickenType].name} → ${nextChickenName}`}
+              {nextChickenCost.toLocaleString()} 🥚
             </div>
-
-            {chickenType !==
-              "LEGENDARY" && (
-              <>
-                <div className="text-sm mt-1">
-                  Cost:
-                  {" "}
-                  {nextChickenCost.toLocaleString()}
-                  {" "}
-                  🥚
-                </div>
-
-                <div className="text-xs">
-                  {eggs.toLocaleString()}
-                  {" / "}
-                  {nextChickenCost.toLocaleString()}
-                </div>
-              </>
-            )}
           </button>
 
           <button
             onClick={upgradeCoop}
-            disabled={
-              coopLevel >= 4 ||
-              eggs < coopCost
-            }
-            className="bg-blue-400 rounded-xl p-4 font-bold shadow disabled:opacity-50"
+            className="bg-gradient-to-b from-blue-500 to-blue-800 rounded-2xl p-4 font-black text-yellow-300"
           >
-            🏠 Upgrade Kandang
+            UPGRADE KANDANG
 
             <div className="text-sm mt-2">
-              {coopLevel >= 4
-                ? "MAX LEVEL"
-                : `Lv.${coopLevel} → Lv.${coopLevel + 1}`}
+              {coopCost.toLocaleString()} 🥚
             </div>
-
-            {coopLevel < 4 && (
-              <>
-                <div className="text-sm mt-1">
-                  Cost:
-                  {" "}
-                  {coopCost.toLocaleString()}
-                  {" "}
-                  🥚
-                </div>
-
-                <div className="text-xs">
-                  {eggs.toLocaleString()}
-                  {" / "}
-                  {coopCost.toLocaleString()}
-                </div>
-              </>
-            )}
           </button>
 
         </div>
 
       </div>
+
     </main>
   );
 }
