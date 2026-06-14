@@ -106,7 +106,7 @@ const DIG_REWARDS: DigReward[] = [
 const DAILY_TASKS: TaskDef[] = [
   { id: "tap100",  label: "Generate Ayam 5x",      type: "tap",   target: 5,   rewardEggs: 300, rewardWorms: 5  },
   { id: "merge3",  label: "Merge 3x",              type: "merge", target: 3,   rewardEggs: 200, rewardWorms: 8  },
-  { id: "dig5",    label: "Gali 5x",               type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
+  { id: "dig5",    label: "Scratch 5x",             type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
   { id: "earn500", label: "Kumpulkan 500 🥚",      type: "earn",  target: 500, rewardEggs: 400, rewardWorms: 0  },
 ];
 
@@ -270,7 +270,7 @@ function Walker({ tier, index }: WalkerItemProps) {
 export default function Home() {
   const [eggs, setEggs]           = useState<number>(50);
   const [worms, setWorms]         = useState<number>(10);
-  const [shovels, setShovels]     = useState<number>(3);
+  const [cekers, setCekers]       = useState<number>(3);
   const [grid, setGrid]           = useState<(GridCell | null)[]>(Array(GRID_SIZE).fill(null));
   const [screen, setScreen]       = useState<Screen>("farm");
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
@@ -314,7 +314,7 @@ export default function Home() {
     if (!s) return;
     if (typeof s.eggs === "number")         setEggs(s.eggs);
     if (typeof s.worms === "number")        setWorms(s.worms);
-    if (typeof s.shovels === "number")      setShovels(s.shovels);
+    if (typeof s.cekers === "number")       setCekers(s.cekers);
     if (Array.isArray(s.grid))              setGrid(s.grid as (GridCell | null)[]);
     if (typeof s.boostEndTime === "number") {
       setBoostEndTime(s.boostEndTime as number);
@@ -335,12 +335,12 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        eggs, worms, shovels, grid, boostEndTime, autoMerge,
+        eggs, worms, cekers, grid, boostEndTime, autoMerge,
         spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
         checkinDay, checkinDate, taps, totalEarned,
       }));
     } catch {}
-  }, [eggs, worms, shovels, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned]);
+  }, [eggs, worms, cekers, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned]);
 
   // ── Reset spin daily ──
   useEffect(() => {
@@ -518,11 +518,11 @@ export default function Home() {
     return arr;
   }
 
-  // ── Dig ──
+  // ── Scratch (Dig) ──
   function doDig() {
-    if (worms < 1) { showToast("Cacing tidak cukup!", "err"); return; }
+    if (cekers < 1) { showToast("Ceker tidak cukup!", "err"); return; }
     if (isDigging) return;
-    setWorms(w => w - 1);
+    setCekers(c => c - 1);
     setDigResult(null);
     setIsDigging(true);
     setTimeout(() => {
@@ -607,6 +607,18 @@ export default function Home() {
     showToast("+5 🪱 cacing dibeli!");
   }
 
+  function buyCekers() {
+    if (eggs < SHOVEL_COST_EGGS) { showToast("Telur tidak cukup!", "err"); return; }
+    setEggs(e => e - SHOVEL_COST_EGGS);
+    setCekers(c => c + 3);
+    showToast("+3 🐾 ceker ayam dibeli!");
+  }
+
+  function clearGrid() {
+    setGrid(Array(GRID_SIZE).fill(null));
+    showToast("Kandang dikosongkan!", "info");
+  }
+
   // ── Derived values ──
   const totalIdle = grid.reduce((s, c) => {
     if (!c) return s;
@@ -627,12 +639,12 @@ export default function Home() {
 
   // ─── NAV ITEMS ────────────────────────────────────────────────────────────
   const navItems: { key: Screen; label: string; emoji: string; bg: string; border: string }[] = [
-    { key: "main",  label: "Home",     emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
-    { key: "farm",  label: "Kandang",  emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
-    { key: "dig",   label: "Menggali", emoji: "⛏️", bg: "#1a2a10", border: "#4a7a1a" },
-    { key: "spin",  label: "Spin",     emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
-    { key: "tasks", label: "Misi",     emoji: "📋", bg: "#3a1a10", border: "#c07820" },
-    { key: "shop",  label: "Shop",     emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
+    { key: "main",  label: "Home",    emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
+    { key: "farm",  label: "Kandang", emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
+    { key: "dig",   label: "Scratch", emoji: "🐾", bg: "#1a2a10", border: "#4a7a1a" },
+    { key: "spin",  label: "Spin",    emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
+    { key: "tasks", label: "Misi",    emoji: "📋", bg: "#3a1a10", border: "#c07820" },
+    { key: "shop",  label: "Shop",    emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
   ];
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -677,6 +689,7 @@ export default function Home() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <span style={{ fontSize: 13 }}>🥚 <b style={{ color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</b></span>
           <span style={{ fontSize: 13 }}>🪱 <b style={{ color: "#86efac" }}>{Math.floor(worms)}</b></span>
+          <span style={{ fontSize: 13 }}>🐾 <b style={{ color: "#f97316" }}>{cekers}</b></span>
           <button onClick={() => setMusicOn(m => !m)} style={{ background: "none", border: "1px solid #3d3d6e", borderRadius: 8, color: musicOn ? "#fbbf24" : "#666", fontSize: 15, padding: "3px 7px", cursor: "pointer" }}>
             {musicOn ? "🔊" : "🔇"}
           </button>
@@ -723,55 +736,65 @@ export default function Home() {
 
         {/* HOME */}
         {screen === "main" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {[
-                { label: "Per Detik",  val: `${totalIdle.toFixed(1)}🥚` },
-                { label: "Ayam",       val: `${chickenCount}/${GRID_SIZE}` },
-                { label: "Tier Maks",  val: maxTierInGrid > 0 ? getTier(maxTierInGrid as TierId).emoji + " " + maxTierInGrid : "—" },
-              ].map(s => (
-                <div key={s.label} style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "8px 6px", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>{s.label}</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#fbbf24" }}>{s.val}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+
+            {/* Stat cards row 1 */}
+            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Earn per Detik</div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: "#fbbf24" }}>{totalIdle.toFixed(1)} 🥚</div>
+              </div>
+              <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Total Telur Dihasilkan</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</div>
+              </div>
+            </div>
+
+            {/* Ayam di grid per tier */}
+            <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>🐔 Ayam di Kandang ({chickenCount}/{GRID_SIZE})</div>
+              {chickenCount === 0 ? (
+                <div style={{ fontSize: 12, color: "#6b7280", textAlign: "center" }}>Belum ada ayam — generate dulu!</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {CHICKEN_TIERS.map(t => {
+                    const count = grid.filter(c => c && c.tier === t.tier).length;
+                    if (count === 0) return null;
+                    return (
+                      <div key={t.tier} style={{ background: "#1e1e40", border: `1px solid ${t.rarityColor}55`, borderRadius: 8, padding: "3px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>{t.emoji}</span>
+                        <span style={{ color: t.rarityColor, fontWeight: 700 }}>T{t.tier}</span>
+                        <span style={{ color: "#fff", fontWeight: 800 }}>×{count}</span>
+                        <span style={{ color: "#6b7280", fontSize: 9 }}>{t.idlePerSec}/s</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
 
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 2 }}>TOTAL TELUR</div>
-              <div style={{ fontSize: 48, fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>{Math.floor(eggs).toLocaleString()}</div>
-              <div style={{ fontSize: 12, color: "#6b7280" }}>🥚</div>
-            </div>
-
+            {/* Generate button */}
             <button onClick={hatchChicken} style={{
-              width: 160, height: 160, borderRadius: "50%",
+              width: 150, height: 150, borderRadius: "50%",
               background: "#111130", border: "4px solid #fbbf24",
-              fontSize: 52, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+              fontSize: 48, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
               animation: "pulse 2s infinite",
             }}>
               <span>🐣</span>
-              <span style={{ fontSize: 13, color: "#fbbf24", fontWeight: 800 }}>Generate</span>
+              <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800 }}>Generate</span>
             </button>
-            <div style={{ fontSize: 13, color: "#9ca3af" }}>Tap untuk generate ayam baru! ({HATCH_COST}🥚)</div>
+            <div style={{ fontSize: 12, color: "#9ca3af" }}>Tap untuk generate ayam baru! ({HATCH_COST}🥚)</div>
 
+            {/* Kandang action buttons */}
             <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button onClick={() => setScreen("dig")}  style={bStyle("#1e3a5f", "#1d4ed8")}>⛏️ Menggali</button>
-              <button onClick={() => setScreen("spin")} style={bStyle("#7c3aed", "#6d28d9")}>🎡 Spin</button>
+              <button onClick={buyAutoMerge} disabled={autoMerge} style={{ ...bStyle("#7c3aed", "#6d28d9"), opacity: autoMerge ? 0.5 : 1 }}>
+                {autoMerge ? "✅ Auto-Merge ON" : `🤖 Auto-Merge (${AUTOMERGE_COST_WORMS}🪱)`}
+              </button>
+              <button onClick={clearGrid} style={bStyle("#7f1d1d", "#b91c1c")}>
+                🗑️ Hapus Kandang
+              </button>
             </div>
 
-            {/* Tier legend */}
-            {maxTierInGrid > 0 && (
-              <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>Ayam yang sudah kamu punya:</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {CHICKEN_TIERS.slice(0, maxTierInGrid).map(t => (
-                    <span key={t.tier} style={{ background: "#1e1e40", border: `1px solid ${t.rarityColor}44`, borderRadius: 8, padding: "2px 7px", fontSize: 11 }}>
-                      {t.emoji} <span style={{ color: t.rarityColor }}>{t.name}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -847,26 +870,26 @@ export default function Home() {
           </div>
         )}
 
-        {/* DIG */}
+        {/* SCRATCH */}
         {screen === "dig" && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ fontSize: 13, color: "#9ca3af", textAlign: "center" }}>
-              Habiskan 1 🪱 per gali. Dapat telur atau cacing!
+              Habiskan 1 🐾 per scratch. Dapat telur atau cacing!
             </div>
-            <div style={{ fontSize: 48, animation: isDigging ? "digWiggle .3s infinite" : "none" }}>⛏️</div>
-            <div style={{ fontSize: 40 }}>{isDigging ? "💨" : "🪹"}</div>
+            <div style={{ fontSize: 56, animation: isDigging ? "digWiggle .3s infinite" : "none" }}>🐾</div>
+            <div style={{ fontSize: 40 }}>{isDigging ? "💨" : "🥚"}</div>
 
             {digResult && !isDigging && (
               <div style={{ background: "#111130", border: "1px solid #fbbf24", borderRadius: 16, padding: "12px 28px", textAlign: "center" }}>
-                <div style={{ color: "#9ca3af", fontSize: 12 }}>Hasil galian:</div>
+                <div style={{ color: "#9ca3af", fontSize: 12 }}>Hasil scratch:</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: "#fbbf24" }}>{digResult.label}</div>
               </div>
             )}
 
-            <button onClick={doDig} disabled={isDigging || worms < 1} style={{ ...bStyle("#1e3a5f", "#2563eb"), fontSize: 16, padding: "14px 36px", opacity: isDigging || worms < 1 ? 0.5 : 1 }}>
-              {isDigging ? "Menggali..." : `⛏️ Gali (1 🪱)`}
+            <button onClick={doDig} disabled={isDigging || cekers < 1} style={{ ...bStyle("#7c2d12", "#b45309"), fontSize: 16, padding: "14px 36px", opacity: isDigging || cekers < 1 ? 0.5 : 1 }}>
+              {isDigging ? "Scratching..." : `🐾 Scratch (1 🐾 Ceker)`}
             </button>
-            <div style={{ color: "#86efac", fontSize: 13 }}>🪱 Cacing: {Math.floor(worms)}</div>
+            <div style={{ color: "#f97316", fontSize: 13 }}>🐾 Ceker Ayam: {cekers}</div>
 
             <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
               <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>Kemungkinan reward:</div>
@@ -1000,10 +1023,18 @@ export default function Home() {
               },
               {
                 title: "🪱 Beli 5 Cacing",
-                desc: "Tambah 5 cacing untuk menggali",
+                desc: "Tambah 5 cacing (digunakan untuk boost & item lain)",
                 cost: `${WORM_COST}🥚`,
                 action: buyWorms,
                 bg: "#065f46", bg2: "#047857",
+                done: false,
+              },
+              {
+                title: "🐾 Beli 3 Ceker Ayam",
+                desc: "Tambah 3 ceker untuk scratch & dapat telur/cacing",
+                cost: `${SHOVEL_COST_EGGS}🥚`,
+                action: buyCekers,
+                bg: "#7c2d12", bg2: "#b45309",
                 done: false,
               },
             ].map((item, i) => (
@@ -1020,9 +1051,10 @@ export default function Home() {
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📊 Statistik</div>
               <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 2.2 }}>
                 Total generate ayam: <b style={{ color: "#fbbf24" }}>{taps.toLocaleString()}</b><br />
-                Total telur diperoleh: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()}</b><br />
+                Total telur diperoleh: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</b><br />
                 Ayam di kandang: <b style={{ color: "#fbbf24" }}>{chickenCount}</b><br />
                 Tier tertinggi: <b style={{ color: "#fbbf24" }}>{maxTierInGrid > 0 ? `${getTier(maxTierInGrid as TierId).emoji} ${getTier(maxTierInGrid as TierId).name}` : "—"}</b><br />
+                Ceker ayam: <b style={{ color: "#f97316" }}>{cekers} 🐾</b><br />
                 Auto-merge: <b style={{ color: autoMerge ? "#86efac" : "#9ca3af" }}>{autoMerge ? "Aktif" : "Tidak aktif"}</b>
               </div>
             </div>
