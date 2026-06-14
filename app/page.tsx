@@ -76,6 +76,7 @@ const GRID_SIZE = 15;
 const HATCH_COST = 30;
 const BOOST_COST_WORMS = 10;
 const AUTOMERGE_COST_WORMS = 5;
+const WORM_COST = 40;
 const SHOVEL_COST_EGGS = 40;
 const SHOVEL_PACK_COST = 150;
 const BOOST_DURATION_MS = 5 * 60 * 1000;
@@ -584,8 +585,8 @@ export default function Home() {
 
   // ── Shop ──
   function buyBoost() {
-    if (eggs < BOOST_COST) { showToast("Telur tidak cukup!", "err"); return; }
-    setEggs(e => e - BOOST_COST);
+    if (worms < BOOST_COST_WORMS) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - BOOST_COST_WORMS);
     setBoostActive(true);
     setBoostEndTime(Date.now() + BOOST_DURATION_MS);
     showToast("Boost x2 aktif 5 menit! ⚡");
@@ -593,8 +594,8 @@ export default function Home() {
 
   function buyAutoMerge() {
     if (autoMerge) { showToast("Auto-merge sudah aktif!"); return; }
-    if (worms < 5) { showToast("Cacing tidak cukup!", "err"); return; }
-    setWorms(w => w - 5);
+    if (worms < AUTOMERGE_COST_WORMS) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - AUTOMERGE_COST_WORMS);
     setAutoMerge(true);
     showToast("Auto-Merge aktif! 🤖");
   }
@@ -984,7 +985,7 @@ export default function Home() {
               {
                 title: "⚡ Boost x2 — 5 Menit",
                 desc: `Semua income ×2 selama 5 menit\nSisa: ${boostActive ? `${Math.ceil((boostEndTime - Date.now()) / 1000)}s` : "—"}`,
-                cost: `${BOOST_COST}🥚`,
+                cost: `${BOOST_COST_WORMS}🪱`,
                 action: buyBoost,
                 bg: "#b45309", bg2: "#92400e",
                 done: false,
