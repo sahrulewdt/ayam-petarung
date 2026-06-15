@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
-type TierId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+type TierId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
 
 interface ChickenTier {
   tier: TierId;
@@ -67,26 +67,38 @@ interface DigReward {
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const CHICKEN_TIERS: ChickenTier[] = [
-  { tier: 1,  name: "Ayam Kampung", emoji: "🐣", rarity: "Common",      rarityColor: "#9ca3af", badgeColor: "#6b7280", idlePerSec: 0.1   },
-  { tier: 2,  name: "Ayam Sentul",  emoji: "🐥", rarity: "Uncommon",    rarityColor: "#4ade80", badgeColor: "#16a34a", idlePerSec: 0.3   },
-  { tier: 3,  name: "Ayam Pelung",  emoji: "🐔", rarity: "Rare",        rarityColor: "#60a5fa", badgeColor: "#2563eb", idlePerSec: 0.8   },
-  { tier: 4,  name: "Ayam Kedu",    emoji: "🦆", rarity: "Epic",        rarityColor: "#a78bfa", badgeColor: "#7c3aed", idlePerSec: 2.0   },
-  { tier: 5,  name: "Ayam Gaok",    emoji: "🦅", rarity: "Epic+",       rarityColor: "#f472b6", badgeColor: "#be185d", idlePerSec: 5.0   },
-  { tier: 6,  name: "Ayam Bangkok", emoji: "🦚", rarity: "Legendary",   rarityColor: "#fb923c", badgeColor: "#c2410c", idlePerSec: 12.0  },
-  { tier: 7,  name: "Ayam Birma",   emoji: "🦜", rarity: "Legendary+",  rarityColor: "#34d399", badgeColor: "#047857", idlePerSec: 28.0  },
-  { tier: 8,  name: "Ayam Saigon",  emoji: "🐲", rarity: "Mythic",      rarityColor: "#f87171", badgeColor: "#b91c1c", idlePerSec: 65.0  },
-  { tier: 9,  name: "Ayam Bekisar", emoji: "🌟", rarity: "Ancient",     rarityColor: "#fde047", badgeColor: "#a16207", idlePerSec: 150.0 },
-  { tier: 10, name: "Ayam Cemani",  emoji: "⚫", rarity: "Divine",      rarityColor: "#c084fc", badgeColor: "#7e22ce", idlePerSec: 350.0 },
+  { tier: 1,  name: "Kampung",        emoji: "🐣", rarity: "Bibit",          rarityColor: "#9ca3af", badgeColor: "#6b7280", idlePerSec: 0.1       },
+  { tier: 2,  name: "Sentul",         emoji: "🐥", rarity: "Tangguh",        rarityColor: "#4ade80", badgeColor: "#16a34a", idlePerSec: 0.3       },
+  { tier: 3,  name: "Kedu",           emoji: "🐔", rarity: "Pilihan",        rarityColor: "#60a5fa", badgeColor: "#2563eb", idlePerSec: 0.8       },
+  { tier: 4,  name: "Ciparage",       emoji: "🦆", rarity: "Unggul",         rarityColor: "#a78bfa", badgeColor: "#7c3aed", idlePerSec: 2.0       },
+  { tier: 5,  name: "Gaok",           emoji: "🦅", rarity: "Petarung",       rarityColor: "#f472b6", badgeColor: "#be185d", idlePerSec: 5.0       },
+  { tier: 6,  name: "Pelung",         emoji: "🦚", rarity: "Jawara",         rarityColor: "#fb923c", badgeColor: "#c2410c", idlePerSec: 12.0      },
+  { tier: 7,  name: "Bekisar",        emoji: "🦜", rarity: "Jagoan",         rarityColor: "#34d399", badgeColor: "#047857", idlePerSec: 28.0      },
+  { tier: 8,  name: "Bangkok",        emoji: "🐉", rarity: "Champion",       rarityColor: "#f87171", badgeColor: "#b91c1c", idlePerSec: 65.0      },
+  { tier: 9,  name: "Birma",          emoji: "🌟", rarity: "Elite",          rarityColor: "#fde047", badgeColor: "#a16207", idlePerSec: 150.0     },
+  { tier: 10, name: "Saigon",         emoji: "⚫", rarity: "Master",         rarityColor: "#c084fc", badgeColor: "#7e22ce", idlePerSec: 350.0     },
+  { tier: 11, name: "Wangkas",        emoji: "🔥", rarity: "Raja Arena",     rarityColor: "#ff4500", badgeColor: "#cc3700", idlePerSec: 800.0     },
+  { tier: 12, name: "Pama",           emoji: "⚔️", rarity: "Panglima",       rarityColor: "#00ced1", badgeColor: "#008b8b", idlePerSec: 1800.0    },
+  { tier: 13, name: "Magon",          emoji: "🛡️", rarity: "Legenda",        rarityColor: "#ffd700", badgeColor: "#b8860b", idlePerSec: 4000.0    },
+  { tier: 14, name: "Bagon",          emoji: "👹", rarity: "Mythic",         rarityColor: "#8a2be2", badgeColor: "#4b0082", idlePerSec: 9000.0    },
+  { tier: 15, name: "Kelso",          emoji: "⚡", rarity: "Ancient",        rarityColor: "#00ff7f", badgeColor: "#006400", idlePerSec: 20000.0   },
+  { tier: 16, name: "Roundhead",      emoji: "🌪️", rarity: "Immortal",       rarityColor: "#1e90ff", badgeColor: "#0000cd", idlePerSec: 45000.0   },
+  { tier: 17, name: "Hatch",          emoji: "🌋", rarity: "Titan",          rarityColor: "#ff1493", badgeColor: "#c71585", idlePerSec: 100000.0  },
+  { tier: 18, name: "Shamo",          emoji: "👁️", rarity: "Divine",         rarityColor: "#fffafa", badgeColor: "#696969", idlePerSec: 250000.0  },
+  { tier: 19, name: "Cemani",         emoji: "🌑", rarity: "Sang Sakti",     rarityColor: "#000000", badgeColor: "#2f4f4f", idlePerSec: 600000.0  },
+  { tier: 20, name: "Ayam Dewa Nusantara", emoji: "👑", rarity: "Dewa Nusantara", rarityColor: "#ff00ff", badgeColor: "#8b008b", idlePerSec: 1500000.0 }
 ];
 
 const GRID_SIZE = 15;
 const HATCH_COST = 30;
 const BOOST_COST_WORMS = 10;
-const AUTOMERGE_COST_WORMS = 5;
 const WORM_COST = 40;
 const SHOVEL_COST_EGGS = 40;
-const SHOVEL_PACK_COST = 150;
 const BOOST_DURATION_MS = 5 * 60 * 1000;
+
+const AUTO_TICKET_COST = 5;
+const AUTO_DUR_MS = 60000; // 1 Menit
+const AUTO_MERGE_CD_MS = 30000; // 30 Detik Cooldown
 
 const SPIN_REWARDS: SpinReward[] = [
   { label: "100 🥚",   eggs: 100,  worms: 0,  prob: 30 },
@@ -113,7 +125,7 @@ const DIG_REWARDS: DigReward[] = [
 const DAILY_TASKS: TaskDef[] = [
   { id: "tap100",  label: "Generate Ayam 5x",      type: "tap",   target: 5,   rewardEggs: 300, rewardWorms: 5  },
   { id: "merge3",  label: "Merge 3x",              type: "merge", target: 3,   rewardEggs: 200, rewardWorms: 8  },
-  { id: "dig5",    label: "Scratch 5x",             type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
+  { id: "dig5",    label: "Scratch 5x",            type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
   { id: "earn500", label: "Kumpulkan 500 🥚",      type: "earn",  target: 500, rewardEggs: 400, rewardWorms: 0  },
 ];
 
@@ -135,10 +147,10 @@ function todayStr(): string {
 }
 
 function getTier(tier: TierId): ChickenTier {
-  return CHICKEN_TIERS[tier - 1];
+  return CHICKEN_TIERS[(tier - 1) % CHICKEN_TIERS.length];
 }
 
-const SAVE_KEY = "ayam-petarung-v3";
+const SAVE_KEY = "ayam-petarung-v4";
 const LEADER_KEY = "ayam-petarung-leaderboard";
 
 function loadSave(): Record<string, unknown> | null {
@@ -190,15 +202,6 @@ function Yard({ tiers }: WalkerProps) {
         <Walker key={t.tier} tier={t} index={i} />
       ))}
 
-      {/* Fence */}
-      <div style={{ position: "absolute", bottom: 55, left: 0, right: 0, height: 32, pointerEvents: "none" }}>
-        <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, height: 5, background: "#a07040", borderRadius: 2 }} />
-        <div style={{ position: "absolute", bottom: 9, left: 0, right: 0, height: 5, background: "#a07040", borderRadius: 2 }} />
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div key={i} style={{ position: "absolute", bottom: 0, left: i * 19, width: 11, height: 26, background: "#8b5c2a", borderRadius: "2px 2px 0 0" }} />
-        ))}
-      </div>
-
       {/* Ground */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 55, background: "#c8a05a", borderTop: "3px solid #a07840" }} />
       <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", gap: 10, padding: "0 10px" }}>
@@ -246,7 +249,7 @@ interface WalkerItemProps {
 
 function Walker({ tier, index }: WalkerItemProps) {
   const p = WALKER_PARAMS[index % WALKER_PARAMS.length];
-  const animName = `walk-${index}`;
+  const animName = `walk-${tier.tier}`;
   const from = p.goRight ? "-30px" : "380px";
   const to   = p.goRight ? "380px"  : "-30px";
 
@@ -276,6 +279,7 @@ function Walker({ tier, index }: WalkerItemProps) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function Home() {
+  const [now, setNow]             = useState(Date.now());
   const [eggs, setEggs]           = useState<number>(50);
   const [worms, setWorms]         = useState<number>(10);
   const [cekers, setCekers]       = useState<number>(3);
@@ -285,7 +289,13 @@ export default function Home() {
 
   const [boostActive, setBoostActive]   = useState(false);
   const [boostEndTime, setBoostEndTime] = useState(0);
-  const [autoMerge, setAutoMerge]       = useState(false);
+
+  // Auto Tickets States
+  const [autoMergeTix, setAutoMergeTix] = useState(0);
+  const [autoGenTix, setAutoGenTix]     = useState(0);
+  const [autoMergeEnd, setAutoMergeEnd] = useState(0);
+  const [autoMergeCD, setAutoMergeCD]   = useState(0);
+  const [autoGenEnd, setAutoGenEnd]     = useState(0);
 
   const [spinUsedToday, setSpinUsedToday] = useState(false);
   const [lastSpinDate, setLastSpinDate]   = useState("");
@@ -315,10 +325,18 @@ export default function Home() {
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const bgStopRef    = useRef<(() => void) | null>(null);
   const floatId      = useRef(0);
-  const idleRef      = useRef({ grid, boostActive, boostEndTime });
+  const idleRef      = useRef({ grid, boostActive, boostEndTime, autoGenEnd, eggs });
 
-  // Keep ref in sync for interval callbacks
-  useEffect(() => { idleRef.current = { grid, boostActive, boostEndTime }; }, [grid, boostActive, boostEndTime]);
+  // Update clock per second for UI timers
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Sync ref
+  useEffect(() => { 
+    idleRef.current = { grid, boostActive, boostEndTime, autoGenEnd, eggs }; 
+  }, [grid, boostActive, boostEndTime, autoGenEnd, eggs]);
 
   // ── Load save ──
   useEffect(() => {
@@ -332,7 +350,14 @@ export default function Home() {
       setBoostEndTime(s.boostEndTime as number);
       setBoostActive(Date.now() < (s.boostEndTime as number));
     }
-    if (typeof s.autoMerge === "boolean")   setAutoMerge(s.autoMerge);
+    
+    // Load Tickets
+    if (typeof s.autoMergeTix === "number") setAutoMergeTix(s.autoMergeTix);
+    if (typeof s.autoGenTix === "number")   setAutoGenTix(s.autoGenTix);
+    if (typeof s.autoMergeEnd === "number") setAutoMergeEnd(s.autoMergeEnd);
+    if (typeof s.autoMergeCD === "number")  setAutoMergeCD(s.autoMergeCD);
+    if (typeof s.autoGenEnd === "number")   setAutoGenEnd(s.autoGenEnd);
+
     if (typeof s.spinUsedToday === "boolean") setSpinUsedToday(s.spinUsedToday);
     if (typeof s.lastSpinDate === "string") setLastSpinDate(s.lastSpinDate);
     if (s.taskProgress)                     setTaskProgress(s.taskProgress as Record<string, number>);
@@ -342,7 +367,7 @@ export default function Home() {
     if (typeof s.taps === "number")         setTaps(s.taps);
     if (typeof s.totalEarned === "number")  setTotalEarned(s.totalEarned);
     if (typeof s.playerName === "string")   setPlayerName(s.playerName);
-    // Load leaderboard from separate key
+    
     try {
       const lb = localStorage.getItem(LEADER_KEY);
       if (lb) setLeaderboard(JSON.parse(lb) as LeaderEntry[]);
@@ -353,17 +378,86 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        eggs, worms, cekers, grid, boostEndTime, autoMerge,
+        eggs, worms, cekers, grid, boostEndTime,
+        autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd,
         spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
         checkinDay, checkinDate, taps, totalEarned, playerName,
       }));
     } catch {}
-  }, [eggs, worms, cekers, grid, boostEndTime, autoMerge, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName]);
+  }, [eggs, worms, cekers, grid, boostEndTime, autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName]);
 
   // ── Reset spin daily ──
   useEffect(() => {
     if (lastSpinDate !== todayStr()) setSpinUsedToday(false);
   }, [lastSpinDate]);
+
+  // ── Audio Engine (SFX & Music) ──
+  function initAudio() {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }
+
+  function playMergeSound() {
+    if (!musicOn) return;
+    try {
+      const ctx = initAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (musicOn) startMusic();
+    else stopMusic();
+    return () => stopMusic();
+  }, [musicOn]);
+
+  function startMusic() {
+    try {
+      const ctx = initAudio();
+      stopMusic();
+      const notes = [329.63, 392.00, 440.00, 523.25, 659.25, 587.33];
+      const seq   = [0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 4, 5];
+      let i = 0;
+      let stopped = false;
+      function playNext() {
+        if (stopped || !audioCtxRef.current) return;
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.value = notes[seq[i % seq.length]];
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.45);
+        i++;
+        const tid = setTimeout(playNext, 450);
+        bgStopRef.current = () => { stopped = true; clearTimeout(tid); };
+      }
+      playNext();
+    } catch {}
+  }
+
+  function stopMusic() {
+    bgStopRef.current?.();
+    bgStopRef.current = null;
+  }
 
   // ── Idle income ──
   useEffect(() => {
@@ -388,55 +482,36 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [boostActive, boostEndTime]);
 
-  // ── Auto merge ──
+  // ── Auto Merge Loop ──
   useEffect(() => {
-    if (!autoMerge) return;
-    const interval = setInterval(() => setGrid(g => autoMergeGrid(g)), 2000);
+    const interval = setInterval(() => {
+      if (Date.now() < autoMergeEnd) {
+        setGrid(g => autoMergeGrid(g));
+      }
+    }, 1500);
     return () => clearInterval(interval);
-  }, [autoMerge]);
+  }, [autoMergeEnd, musicOn]);
 
-  // ── Music ──
+  // ── Auto Generate Loop ──
   useEffect(() => {
-    if (musicOn) startMusic();
-    else stopMusic();
-    return () => stopMusic();
-  }, [musicOn]);
-
-  function startMusic() {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const interval = setInterval(() => {
+      const { grid: g, autoGenEnd: ae, eggs: curEggs } = idleRef.current;
+      if (Date.now() < ae && curEggs >= HATCH_COST) {
+        const empty = g.findIndex(c => c === null);
+        if (empty !== -1) {
+          setEggs(e => e - HATCH_COST);
+          setGrid(prev => {
+            const n = [...prev];
+            if (n[empty] === null) n[empty] = { tier: 1, id: Date.now() };
+            return n;
+          });
+          setTaps(t => t + 1);
+          trackTask("tap");
+        }
       }
-      const ctx = audioCtxRef.current;
-      stopMusic();
-      const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
-      const seq   = [0, 2, 4, 5, 4, 2, 1, 0, 3, 4, 3, 2];
-      let i = 0;
-      let stopped = false;
-      function playNext() {
-        if (stopped || !audioCtxRef.current) return;
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "triangle";
-        osc.frequency.value = notes[seq[i % seq.length]];
-        gain.gain.setValueAtTime(0.07, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.4);
-        i++;
-        const tid = setTimeout(playNext, 420);
-        bgStopRef.current = () => { stopped = true; clearTimeout(tid); };
-      }
-      playNext();
-    } catch {}
-  }
-
-  function stopMusic() {
-    bgStopRef.current?.();
-    bgStopRef.current = null;
-  }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Toast ──
   function showToast(msg: string, type: Toast["type"] = "info") {
@@ -495,7 +570,7 @@ export default function Home() {
       if (selectedCell === idx) { setSelectedCell(null); return; }
       const a = grid[selectedCell];
       const b = grid[idx];
-      if (a && b && a.tier === b.tier && a.tier < 10) {
+      if (a && b && a.tier === b.tier && a.tier < 20) {
         setGrid(g => {
           const n = [...g];
           n[selectedCell] = null;
@@ -503,6 +578,7 @@ export default function Home() {
           return n;
         });
         const newTier = getTier((a.tier + 1) as TierId);
+        playMergeSound();
         showToast(`Merge! ${newTier.emoji} ${newTier.name} (${newTier.rarity})`);
         trackTask("merge");
       } else if (!b) {
@@ -523,12 +599,14 @@ export default function Home() {
   function autoMergeGrid(g: (GridCell | null)[]): (GridCell | null)[] {
     const arr = [...g];
     for (let i = 0; i < arr.length; i++) {
-      if (!arr[i] || arr[i]!.tier >= 10) continue;
+      if (!arr[i] || arr[i]!.tier >= 20) continue;
       for (let j = i + 1; j < arr.length; j++) {
         if (!arr[j]) continue;
         if (arr[j]!.tier === arr[i]!.tier) {
           arr[j] = { tier: (arr[i]!.tier + 1) as TierId, id: Date.now() };
           arr[i] = null;
+          playMergeSound();
+          trackTask("merge");
           return arr;
         }
       }
@@ -601,6 +679,25 @@ export default function Home() {
     showToast(`Check-in hari ${nextDay + 1}: +${reward}🥚!`, "success");
   }
 
+  // ── Auto Tickets Handlers ──
+  function triggerAutoMerge() {
+    if (autoMergeTix <= 0) { showToast("Tiket Auto-Merge habis!", "err"); return; }
+    if (now < autoMergeEnd) { showToast("Auto-Merge masih aktif!", "err"); return; }
+    if (now < autoMergeCD) { showToast(`Cooldown! Tunggu ${Math.ceil((autoMergeCD - now)/1000)}s`, "err"); return; }
+    setAutoMergeTix(t => t - 1);
+    setAutoMergeEnd(Date.now() + AUTO_DUR_MS);
+    setAutoMergeCD(Date.now() + AUTO_DUR_MS + AUTO_MERGE_CD_MS);
+    showToast("Auto-Merge Aktif! (1 Menit) 🤖", "success");
+  }
+
+  function triggerAutoGen() {
+    if (autoGenTix <= 0) { showToast("Tiket Auto-Gen habis!", "err"); return; }
+    if (now < autoGenEnd) { showToast("Auto-Generate masih aktif!", "err"); return; }
+    setAutoGenTix(t => t - 1);
+    setAutoGenEnd(Date.now() + AUTO_DUR_MS);
+    showToast("Auto-Generate Aktif! (1 Menit) 🐣", "success");
+  }
+
   // ── Shop ──
   function buyBoost() {
     if (worms < BOOST_COST_WORMS) { showToast("Cacing tidak cukup!", "err"); return; }
@@ -610,12 +707,18 @@ export default function Home() {
     showToast("Boost x2 aktif 5 menit! ⚡");
   }
 
-  function buyAutoMerge() {
-    if (autoMerge) { showToast("Auto-merge sudah aktif!"); return; }
-    if (worms < AUTOMERGE_COST_WORMS) { showToast("Cacing tidak cukup!", "err"); return; }
-    setWorms(w => w - AUTOMERGE_COST_WORMS);
-    setAutoMerge(true);
-    showToast("Auto-Merge aktif! 🤖");
+  function buyAutoMergeTix() {
+    if (worms < AUTO_TICKET_COST) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - AUTO_TICKET_COST);
+    setAutoMergeTix(t => t + 1);
+    showToast("+1 Tiket Auto-Merge dibeli! 🎫");
+  }
+
+  function buyAutoGenTix() {
+    if (worms < AUTO_TICKET_COST) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - AUTO_TICKET_COST);
+    setAutoGenTix(t => t + 1);
+    showToast("+1 Tiket Auto-Generate dibeli! 🎫");
   }
 
   function buyWorms() {
@@ -681,6 +784,10 @@ export default function Home() {
 
   const chickenCount = grid.filter(Boolean).length;
 
+  const isAmActive = now < autoMergeEnd;
+  const isAmCD = now < autoMergeCD && !isAmActive;
+  const isAgActive = now < autoGenEnd;
+
   // ─── NAV ITEMS ────────────────────────────────────────────────────────────
   const navItems: { key: Screen; label: string; emoji: string; bg: string; border: string }[] = [
     { key: "main",        label: "Home",       emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
@@ -735,7 +842,7 @@ export default function Home() {
           <span style={{ fontSize: 13 }}>🥚 <b style={{ color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</b></span>
           <span style={{ fontSize: 13 }}>🪱 <b style={{ color: "#86efac" }}>{Math.floor(worms)}</b></span>
           <span style={{ fontSize: 13 }}>🐾 <b style={{ color: "#f97316" }}>{cekers}</b></span>
-          <button onClick={() => setMusicOn(m => !m)} style={{ background: "none", border: "1px solid #3d3d6e", borderRadius: 8, color: musicOn ? "#fbbf24" : "#666", fontSize: 15, padding: "3px 7px", cursor: "pointer" }}>
+          <button onClick={() => { initAudio(); setMusicOn(m => !m); }} style={{ background: "none", border: "1px solid #3d3d6e", borderRadius: 8, color: musicOn ? "#fbbf24" : "#666", fontSize: 15, padding: "3px 7px", cursor: "pointer" }}>
             {musicOn ? "🔊" : "🔇"}
           </button>
         </div>
@@ -751,7 +858,7 @@ export default function Home() {
           <span style={{ fontSize: 15, fontWeight: 700, color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#1a4a1a", padding: "3px 10px", borderRadius: 20, border: "1.5px solid #2d7a1a" }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#86efac" }}>{totalIdle.toFixed(1)}/s</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#86efac" }}>{totalIdle.toLocaleString()}/s</span>
           <span style={{ fontSize: 13 }}>🚀</span>
         </div>
         {boostActive && (
@@ -783,11 +890,11 @@ export default function Home() {
         {screen === "main" && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
 
-            {/* Stat cards row 1 */}
+            {/* Stat cards */}
             <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Earn per Detik</div>
-                <div style={{ fontWeight: 800, fontSize: 18, color: "#fbbf24" }}>{totalIdle.toFixed(1)} 🥚</div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: "#fbbf24" }}>{totalIdle.toLocaleString()} 🥚</div>
               </div>
               <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Total Telur Dihasilkan</div>
@@ -795,7 +902,43 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Ayam di grid per tier */}
+            {/* Fitur Otomatis */}
+            <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24", marginBottom: 8 }}>⚡ Fitur Otomatis</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                
+                {/* Auto Merge */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e1e40", padding: "10px", borderRadius: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>🤖 Auto Merge</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>Tiket: <b style={{ color: "#fff" }}>{autoMergeTix}</b></div>
+                  </div>
+                  {isAmActive ? (
+                    <div style={{ fontSize: 11, color: "#86efac", fontWeight: 700 }}>Aktif: {Math.ceil((autoMergeEnd - now)/1000)}s</div>
+                  ) : isAmCD ? (
+                    <div style={{ fontSize: 11, color: "#f87171", fontWeight: 700 }}>Cooldown: {Math.ceil((autoMergeCD - now)/1000)}s</div>
+                  ) : (
+                    <button onClick={triggerAutoMerge} style={{ ...bStyle("#7c3aed", "#6d28d9"), width: "auto", padding: "6px 12px", fontSize: 11 }}>Gunakan</button>
+                  )}
+                </div>
+
+                {/* Auto Gen */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e1e40", padding: "10px", borderRadius: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>🐣 Auto Generate</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>Tiket: <b style={{ color: "#fff" }}>{autoGenTix}</b></div>
+                  </div>
+                  {isAgActive ? (
+                    <div style={{ fontSize: 11, color: "#86efac", fontWeight: 700 }}>Aktif: {Math.ceil((autoGenEnd - now)/1000)}s</div>
+                  ) : (
+                    <button onClick={triggerAutoGen} style={{ ...bStyle("#059669", "#047857"), width: "auto", padding: "6px 12px", fontSize: 11 }}>Gunakan</button>
+                  )}
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 8, textAlign: "center" }}>Beli tiket tambahan menggunakan cacing di Menu Shop 🛒</div>
+            </div>
+
+            {/* Ayam di grid */}
             <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
               <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>🐔 Ayam di Kandang ({chickenCount}/{GRID_SIZE})</div>
               {chickenCount === 0 ? (
@@ -810,7 +953,6 @@ export default function Home() {
                         <span>{t.emoji}</span>
                         <span style={{ color: t.rarityColor, fontWeight: 700 }}>T{t.tier}</span>
                         <span style={{ color: "#fff", fontWeight: 800 }}>×{count}</span>
-                        <span style={{ color: "#6b7280", fontSize: 9 }}>{t.idlePerSec}/s</span>
                       </div>
                     );
                   })}
@@ -828,14 +970,7 @@ export default function Home() {
               <span>🐣</span>
               <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800 }}>Generate</span>
             </button>
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>Tap untuk generate ayam baru! ({HATCH_COST}🥚)</div>
-
-            {/* Kandang action button */}
-            <div style={{ width: "100%" }}>
-              <button onClick={buyAutoMerge} disabled={autoMerge} style={{ ...bStyle("#7c3aed", "#6d28d9"), opacity: autoMerge ? 0.5 : 1 }}>
-                {autoMerge ? "✅ Auto-Merge Aktif" : `🤖 Aktifkan Auto-Merge (${AUTOMERGE_COST_WORMS}🪱)`}
-              </button>
-            </div>
+            <div style={{ fontSize: 12, color: "#9ca3af" }}>Tap untuk generate ayam manual! ({HATCH_COST}🥚)</div>
 
           </div>
         )}
@@ -850,7 +985,7 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Grid 5×3 */}
+            {/* Grid */}
             <div style={{ background: "#d4a45a", padding: 8, border: "3px solid #8b5c2a", borderRadius: 8, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(139,92,42,.1) 18px,rgba(139,92,42,.1) 19px)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
                 {grid.map((cell, idx) => {
@@ -897,14 +1032,14 @@ export default function Home() {
 
             {/* Tier table */}
             <div style={{ marginTop: 12, background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>Daftar tier ayam:</div>
+              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>Daftar lengkap 20 Tier Ayam:</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {CHICKEN_TIERS.map(t => (
                   <div key={t.tier} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                    <span>{t.emoji}</span>
+                    <span style={{ minWidth: 20 }}>{t.emoji}</span>
                     <span style={{ color: t.rarityColor, flex: 1 }}>{t.name}</span>
                     <span style={{ color: "#6b7280", fontSize: 10 }}>{t.rarity}</span>
-                    <span style={{ color: "#fbbf24", fontSize: 10 }}>{t.idlePerSec}/s</span>
+                    <span style={{ color: "#fbbf24", fontSize: 10 }}>{t.idlePerSec.toLocaleString()}/s</span>
                   </div>
                 ))}
               </div>
@@ -932,15 +1067,6 @@ export default function Home() {
               {isDigging ? "Scratching..." : `🐾 Scratch (1 🐾 Ceker)`}
             </button>
             <div style={{ color: "#f97316", fontSize: 13 }}>🐾 Ceker Ayam: {cekers}</div>
-
-            <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>Kemungkinan reward:</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                {DIG_REWARDS.map((r, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#d1d5db" }}>• {r.label} ({r.prob}%)</div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -1048,43 +1174,46 @@ export default function Home() {
             <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24", marginBottom: 2 }}>🛒 Toko</div>
             {[
               {
+                title: "🎫 Beli Tiket Auto-Merge",
+                desc: "1 Tiket: Auto-Merge aktif selama 1 menit (Cooldown 30d)",
+                cost: `${AUTO_TICKET_COST}🪱`,
+                action: buyAutoMergeTix,
+                bg: "#7c3aed", bg2: "#6d28d9",
+              },
+              {
+                title: "🎫 Beli Tiket Auto-Generate",
+                desc: "1 Tiket: Spawn ayam otomatis selama 1 menit (jika telur cukup)",
+                cost: `${AUTO_TICKET_COST}🪱`,
+                action: buyAutoGenTix,
+                bg: "#059669", bg2: "#047857",
+              },
+              {
                 title: "⚡ Boost x2 — 5 Menit",
                 desc: `Semua income ×2 selama 5 menit\nSisa: ${boostActive ? `${Math.ceil((boostEndTime - Date.now()) / 1000)}s` : "—"}`,
                 cost: `${BOOST_COST_WORMS}🪱`,
                 action: buyBoost,
                 bg: "#b45309", bg2: "#92400e",
-                done: false,
-              },
-              {
-                title: "🤖 Auto-Merge",
-                desc: "Merge otomatis setiap 2 detik (permanen sesi ini)",
-                cost: "5🪱",
-                action: buyAutoMerge,
-                bg: "#7c3aed", bg2: "#6d28d9",
-                done: autoMerge,
               },
               {
                 title: "🪱 Beli 5 Cacing",
-                desc: "Tambah 5 cacing (digunakan untuk boost & item lain)",
+                desc: "Beli stok cacing untuk tiket/boost",
                 cost: `${WORM_COST}🥚`,
                 action: buyWorms,
                 bg: "#065f46", bg2: "#047857",
-                done: false,
               },
               {
                 title: "🐾 Beli 3 Ceker Ayam",
-                desc: "Tambah 3 ceker untuk scratch & dapat telur/cacing",
+                desc: "Digunakan di menu Scratch untuk gali telur/cacing",
                 cost: `${SHOVEL_COST_EGGS}🥚`,
                 action: buyCekers,
                 bg: "#7c2d12", bg2: "#b45309",
-                done: false,
               },
             ].map((item, i) => (
               <div key={i} style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 14, padding: 14 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{item.title}</div>
                 <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, whiteSpace: "pre-line" }}>{item.desc}</div>
-                <button onClick={item.action} disabled={item.done} style={{ ...bStyle(item.bg, item.bg2), opacity: item.done ? 0.5 : 1 }}>
-                  {item.done ? "✅ Aktif" : `Beli — ${item.cost}`}
+                <button onClick={item.action} style={{ ...bStyle(item.bg, item.bg2) }}>
+                  Beli — {item.cost}
                 </button>
               </div>
             ))}
@@ -1096,8 +1225,7 @@ export default function Home() {
                 Total telur diperoleh: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</b><br />
                 Ayam di kandang: <b style={{ color: "#fbbf24" }}>{chickenCount}</b><br />
                 Tier tertinggi: <b style={{ color: "#fbbf24" }}>{maxTierInGrid > 0 ? `${getTier(maxTierInGrid as TierId).emoji} ${getTier(maxTierInGrid as TierId).name}` : "—"}</b><br />
-                Ceker ayam: <b style={{ color: "#f97316" }}>{cekers} 🐾</b><br />
-                Auto-merge: <b style={{ color: autoMerge ? "#86efac" : "#9ca3af" }}>{autoMerge ? "Aktif" : "Tidak aktif"}</b>
+                Ceker ayam: <b style={{ color: "#f97316" }}>{cekers} 🐾</b>
               </div>
             </div>
           </div>
