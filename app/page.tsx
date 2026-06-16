@@ -20,8 +20,7 @@ interface GridCell {
   id: number;
 }
 
-// Menghapus "farm" dari daftar screen sesuai permintaan
-type Screen = "main" | "dig" | "spin" | "tasks" | "shop" | "leaderboard";
+type Screen = "main" | "farm" | "dig" | "spin" | "tasks" | "shop" | "leaderboard";
 
 interface LeaderEntry {
   name: string;
@@ -55,852 +54,1246 @@ interface SpinReward {
   label: string;
   eggs: number;
   worms: number;
-  boost: boolean;
-  chance: number;
+  boost?: boolean;
+  prob: number;
 }
 
-// ─── DATA CONSTANTS ──────────────────────────────────────────────────────────
-const CHICKEN_TIERS: Record<TierId, ChickenTier> = {
-  1: { tier: 1, name: "Ayam Kampung", emoji: "🐔", rarity: "Common", rarityColor: "#9ca3af", badgeColor: "#4b5563", idlePerSec: 1 },
-  2: { tier: 2, name: "Ayam Negeri", emoji: "🐤", rarity: "Common", rarityColor: "#9ca3af", badgeColor: "#4b5563", idlePerSec: 3 },
-  3: { tier: 3, name: "Ayam Pelung", emoji: "🐓", rarity: "Uncommon", rarityColor: "#10b981", badgeColor: "#065f46", idlePerSec: 8 },
-  4: { tier: 4, name: "Ayam Kedu", emoji: "🐦", rarity: "Uncommon", rarityColor: "#10b981", badgeColor: "#065f46", idlePerSec: 20 },
-  5: { tier: 5, name: "Ayam Nunukan", emoji: "🦅", rarity: "Rare", rarityColor: "#3b82f6", badgeColor: "#1e3a8a", idlePerSec: 50 },
-  6: { tier: 6, name: "Ayam Ketawa", emoji: "😂", rarity: "Rare", rarityColor: "#3b82f6", badgeColor: "#1e3a8a", idlePerSec: 120 },
-  7: { tier: 7, name: "Ayam Bali", emoji: "🏝️", rarity: "Epic", rarityColor: "#a855f7", badgeColor: "#581c87", idlePerSec: 300 },
-  8: { tier: 8, name: "Ayam Serama", emoji: "✨", rarity: "Epic", rarityColor: "#a855f7", badgeColor: "#581c87", idlePerSec: 750 },
-  9: { tier: 9, name: "Ayam Cemani", emoji: "🖤", rarity: "Legendary", rarityColor: "#f59e0b", badgeColor: "#78350f", idlePerSec: 2000 },
-  10: { tier: 10, name: "Ayam Bangkok", emoji: "🥊", rarity: "Legendary", rarityColor: "#f59e0b", badgeColor: "#78350f", idlePerSec: 5000 },
-  11: { tier: 11, name: "Ayam Shamo", emoji: "🥷", rarity: "Mythic", rarityColor: "#ec4899", badgeColor: "#701a75", idlePerSec: 12500 },
-  12: { tier: 12, name: "Ayam Brahma", emoji: "👑", rarity: "Mythic", rarityColor: "#ec4899", badgeColor: "#701a75", idlePerSec: 30000 },
-  13: { tier: 13, name: "Ayam Phoenix", emoji: "🔥", rarity: "Divine", rarityColor: "#ef4444", badgeColor: "#7f1d1d", idlePerSec: 75000 },
-  14: { tier: 14, name: "Ayam Onagadori", emoji: "🐉", rarity: "Divine", rarityColor: "#ef4444", badgeColor: "#7f1d1d", idlePerSec: 200000 },
-  15: { tier: 15, name: "Ayam Gaib Keraton", emoji: "🔮", rarity: "Cosmic", rarityColor: "#06b6d4", badgeColor: "#164e63", idlePerSec: 500000 },
-  16: { tier: 16, name: "Ayam Petir Selaras", emoji: "⚡", rarity: "Cosmic", rarityColor: "#06b6d4", badgeColor: "#164e63", idlePerSec: 1250000 },
-  17: { tier: 17, name: "Ayam Khodam Perkasa", emoji: "🔱", rarity: "Anomalous", rarityColor: "#6366f1", badgeColor: "#312e81", idlePerSec: 3500000 },
-  18: { tier: 18, name: "Ayam Jagat Raya", emoji: "🌌", rarity: "Anomalous", rarityColor: "#6366f1", badgeColor: "#312e81", idlePerSec: 10000000 },
-  19: { tier: 19, name: "Ayam Sang Pencipta Telur", emoji: "🥚", rarity: "Transcendent", rarityColor: "#f43f5e", badgeColor: "#4c0519", idlePerSec: 30000000 },
-  20: { tier: 20, name: "Ayam Dewa Nusantara", emoji: "🇮🇩", rarity: "Transcendent", rarityColor: "#f43f5e", badgeColor: "#4c0519", idlePerSec: 100000000 },
-};
+interface DigReward {
+  label: string;
+  eggs: number;
+  worms: number;
+  prob: number;
+}
 
-const TASKS_DEFS: TaskDef[] = [
-  { id: "t1", label: "Generate Ayam Manual (5x)", type: "tap", target: 5, rewardEggs: 150, rewardWorms: 2 },
-  { id: "t2", label: "Lakukan Merge Ayam (3x)", type: "merge", target: 3, rewardEggs: 200, rewardWorms: 3 },
-  { id: "t3", label: "Lakukan Gali Scratch (5x)", type: "dig", target: 5, rewardEggs: 300, rewardWorms: 4 },
-  { id: "t4", label: "Kumpulkan 500 Pasif Telur", type: "earn", target: 500, rewardEggs: 500, rewardWorms: 5 },
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const CHICKEN_TIERS: ChickenTier[] = [
+  { tier: 1,  name: "Kampung",        emoji: "🐣", rarity: "Bibit",          rarityColor: "#9ca3af", badgeColor: "#6b7280", idlePerSec: 0.1       },
+  { tier: 2,  name: "Sentul",         emoji: "🐥", rarity: "Tangguh",        rarityColor: "#4ade80", badgeColor: "#16a34a", idlePerSec: 0.3       },
+  { tier: 3,  name: "Kedu",           emoji: "🐔", rarity: "Pilihan",        rarityColor: "#60a5fa", badgeColor: "#2563eb", idlePerSec: 0.8       },
+  { tier: 4,  name: "Ciparage",       emoji: "🦆", rarity: "Unggul",         rarityColor: "#a78bfa", badgeColor: "#7c3aed", idlePerSec: 2.0       },
+  { tier: 5,  name: "Gaok",           emoji: "🦅", rarity: "Petarung",       rarityColor: "#f472b6", badgeColor: "#be185d", idlePerSec: 5.0       },
+  { tier: 6,  name: "Pelung",         emoji: "🦚", rarity: "Jawara",         rarityColor: "#fb923c", badgeColor: "#c2410c", idlePerSec: 12.0      },
+  { tier: 7,  name: "Bekisar",        emoji: "🦜", rarity: "Jagoan",         rarityColor: "#34d399", badgeColor: "#047857", idlePerSec: 28.0      },
+  { tier: 8,  name: "Bangkok",        emoji: "🐉", rarity: "Champion",       rarityColor: "#f87171", badgeColor: "#b91c1c", idlePerSec: 65.0      },
+  { tier: 9,  name: "Birma",          emoji: "🌟", rarity: "Elite",          rarityColor: "#fde047", badgeColor: "#a16207", idlePerSec: 150.0     },
+  { tier: 10, name: "Saigon",         emoji: "⚫", rarity: "Master",         rarityColor: "#c084fc", badgeColor: "#7e22ce", idlePerSec: 350.0     },
+  { tier: 11, name: "Wangkas",        emoji: "🔥", rarity: "Raja Arena",     rarityColor: "#ff4500", badgeColor: "#cc3700", idlePerSec: 800.0     },
+  { tier: 12, name: "Pama",           emoji: "⚔️", rarity: "Panglima",       rarityColor: "#00ced1", badgeColor: "#008b8b", idlePerSec: 1800.0    },
+  { tier: 13, name: "Magon",          emoji: "🛡️", rarity: "Legenda",        rarityColor: "#ffd700", badgeColor: "#b8860b", idlePerSec: 4000.0    },
+  { tier: 14, name: "Bagon",          emoji: "👹", rarity: "Mythic",         rarityColor: "#8a2be2", badgeColor: "#4b0082", idlePerSec: 9000.0    },
+  { tier: 15, name: "Kelso",          emoji: "⚡", rarity: "Ancient",        rarityColor: "#00ff7f", badgeColor: "#006400", idlePerSec: 20000.0   },
+  { tier: 16, name: "Roundhead",      emoji: "🌪️", rarity: "Immortal",       rarityColor: "#1e90ff", badgeColor: "#0000cd", idlePerSec: 45000.0   },
+  { tier: 17, name: "Hatch",          emoji: "🌋", rarity: "Titan",          rarityColor: "#ff1493", badgeColor: "#c71585", idlePerSec: 100000.0  },
+  { tier: 18, name: "Shamo",          emoji: "👁️", rarity: "Divine",         rarityColor: "#fffafa", badgeColor: "#696969", idlePerSec: 250000.0  },
+  { tier: 19, name: "Cemani",         emoji: "🌑", rarity: "Sang Sakti",     rarityColor: "#000000", badgeColor: "#2f4f4f", idlePerSec: 600000.0  },
+  { tier: 20, name: "Ayam Dewa Nusantara", emoji: "👑", rarity: "Dewa Nusantara", rarityColor: "#ff00ff", badgeColor: "#8b008b", idlePerSec: 1500000.0 }
 ];
+
+const GRID_SIZE = 15;
+const HATCH_COST = 30;
+const BOOST_COST_WORMS = 10;
+const WORM_COST = 40;
+const SHOVEL_COST_EGGS = 40;
+const BOOST_DURATION_MS = 5 * 60 * 1000;
+
+const AUTO_TICKET_COST = 5;
+const AUTO_DUR_MS = 60000; // 1 Menit
+const AUTO_MERGE_CD_MS = 30000; // 30 Detik Cooldown
 
 const SPIN_REWARDS: SpinReward[] = [
-  { label: "50 Telur", eggs: 50, worms: 0, boost: false, chance: 30 },
-  { label: "200 Telur", eggs: 200, worms: 0, boost: false, chance: 25 },
-  { label: "500 Telur", eggs: 500, worms: 0, boost: false, chance: 15 },
-  { label: "2 Cacing", eggs: 0, worms: 2, boost: false, chance: 15 },
-  { label: "5 Cacing", eggs: 0, worms: 5, boost: false, chance: 10 },
-  { label: "Boost x2 (5m)", eggs: 0, worms: 0, boost: true, chance: 5 },
+  { label: "100 🥚",   eggs: 100,  worms: 0,  prob: 30 },
+  { label: "250 🥚",   eggs: 250,  worms: 0,  prob: 20 },
+  { label: "500 🥚",   eggs: 500,  worms: 0,  prob: 15 },
+  { label: "1000 🥚",  eggs: 1000, worms: 0,  prob: 10 },
+  { label: "5 🪱",     eggs: 0,    worms: 5,  prob: 10 },
+  { label: "20 🪱",    eggs: 0,    worms: 20, prob: 5  },
+  { label: "2000 🥚",  eggs: 2000, worms: 0,  prob: 5  },
+  { label: "x2 Boost!",eggs: 0,    worms: 0,  boost: true, prob: 5 },
 ];
 
-export default function GamePage() {
-  // ─── CORE GAME STATES ──────────────────────────────────────────────────────
-  const [screen, setScreen] = useState<Screen>("main");
-  const [eggs, setEggs] = useState<number>(100);
-  const [worms, setWorms] = useState<number>(10);
-  const [scratchers, setScratchers] = useState<number>(5);
-  const [maxTierUnlocked, setMaxTierUnlocked] = useState<number>(1);
+const DIG_REWARDS: DigReward[] = [
+  { label: "50 🥚",   eggs: 50,   worms: 0,  prob: 35 },
+  { label: "150 🥚",  eggs: 150,  worms: 0,  prob: 25 },
+  { label: "300 🥚",  eggs: 300,  worms: 0,  prob: 15 },
+  { label: "500 🥚",  eggs: 500,  worms: 0,  prob: 10 },
+  { label: "3 🪱",    eggs: 0,    worms: 3,  prob: 8  },
+  { label: "10 🪱",   eggs: 0,    worms: 10, prob: 4  },
+  { label: "1000 🥚", eggs: 1000, worms: 0,  prob: 2  },
+  { label: "30 🪱",   eggs: 0,    worms: 30, prob: 1  },
+];
 
-  // Grid 15 Kotak (Sekarang diakses langsung di Home Menu)
-  const [grid, setGrid] = useState<(GridCell | null)[]>(Array(15).fill(null));
-  const [selectedCell, setSelectedCell] = useState<number | null>(null);
+const DAILY_TASKS: TaskDef[] = [
+  { id: "tap100",  label: "Generate Ayam 5x",      type: "tap",   target: 5,   rewardEggs: 300, rewardWorms: 5  },
+  { id: "merge3",  label: "Merge 3x",              type: "merge", target: 3,   rewardEggs: 200, rewardWorms: 8  },
+  { id: "dig5",    label: "Scratch 5x",            type: "dig",   target: 5,   rewardEggs: 150, rewardWorms: 10 },
+  { id: "earn500", label: "Kumpulkan 500 🥚",      type: "earn",  target: 500, rewardEggs: 400, rewardWorms: 0  },
+];
 
-  // Boosts & Auto Tickets
-  const [boostTime, setBoostTime] = useState<number>(0); // s
-  const [autoMergeTime, setAutoMergeTime] = useState<number>(0); // s
-  const [autoGenTime, setAutoGenTime] = useState<number>(0); // s
-  const [autoMergeCooldown, setAutoMergeCooldown] = useState<number>(0); // s
+const CHECKIN_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
 
-  // Daily Checkin & Tasks Progress
-  const [lastCheckIn, setLastCheckIn] = useState<string>("");
-  const [checkInStreak, setCheckInStreak] = useState<number>(0);
-  const [taskProgress, setTaskProgress] = useState<Record<string, number>>({ t1: 0, t2: 0, t3: 0, t4: 0 });
-  const [taskClaimed, setTaskClaimed] = useState<Record<string, boolean>>({ t1: false, t2: false, t3: false, t4: false });
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function weightedPick<T extends { prob: number }>(pool: T[]): T {
+  const total = pool.reduce((s, r) => s + r.prob, 0);
+  let rand = Math.random() * total;
+  for (const r of pool) {
+    rand -= r.prob;
+    if (rand <= 0) return r;
+  }
+  return pool[pool.length - 1];
+}
 
-  // Wheel Spin & Scratch
-  const [lastSpinDate, setLastSpinDate] = useState<string>("");
-  const [isSpinning, setIsSpinning] = useState<boolean>(false);
-  const [spinAngle, setSpinAngle] = useState<number>(0);
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-  // Leaderboard & Metadata
-  const [playerName, setPlayerName] = useState<string>("");
-  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
-  const [toast, setToast] = useState<Toast | null>(null);
-  const [floats, setFloats] = useState<FloatItem[]>([]);
-  const [audioOn, setAudioOn] = useState<boolean>(false);
+function getTier(tier: TierId): ChickenTier {
+  return CHICKEN_TIERS[(tier - 1) % CHICKEN_TIERS.length];
+}
 
-  // Refs untuk audio sintetis
-  const audioCtxRef = useRef<AudioContext | null>(null);
+const SAVE_KEY = "ayam-petarung-v4";
+const LEADER_KEY = "ayam-petarung-leaderboard";
 
-  // ─── INITIAL LOAD & AUTO SAVE ──────────────────────────────────────────────
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("petarung_v4_save");
-      if (saved) {
-        try {
-          const d = JSON.parse(saved);
-          if (d.eggs !== undefined) setEggs(d.eggs);
-          if (d.worms !== undefined) setWorms(d.worms);
-          if (d.scratchers !== undefined) setScratchers(d.scratchers);
-          if (d.maxTierUnlocked !== undefined) setMaxTierUnlocked(d.maxTierUnlocked);
-          if (d.grid !== undefined) setGrid(d.grid);
-          if (d.lastCheckIn !== undefined) setLastCheckIn(d.lastCheckIn);
-          if (d.checkInStreak !== undefined) setCheckInStreak(d.checkInStreak);
-          if (d.taskProgress !== undefined) setTaskProgress(d.taskProgress);
-          if (d.taskClaimed !== undefined) setTaskClaimed(d.taskClaimed);
-          if (d.lastSpinDate !== undefined) setLastSpinDate(d.lastSpinDate);
-          if (d.playerName !== undefined) setPlayerName(d.playerName);
-        } catch (_) {}
-      }
-      const savedLeader = localStorage.getItem("petarung_v4_leader");
-      if (savedLeader) {
-        try { setLeaderboard(JSON.parse(savedLeader)); } catch (_) {}
-      }
-    }
-  }, []);
+function loadSave(): Record<string, unknown> | null {
+  try {
+    const s = localStorage.getItem(SAVE_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    const d = { eggs, worms, scratchers, maxTierUnlocked, grid, lastCheckIn, checkInStreak, taskProgress, taskClaimed, lastSpinDate, playerName };
-    localStorage.setItem("petarung_v4_save", JSON.stringify(d));
-  }, [eggs, worms, scratchers, maxTierUnlocked, grid, lastCheckIn, checkInStreak, taskProgress, taskClaimed, lastSpinDate, playerName]);
+// ─── WALKER COMPONENT ─────────────────────────────────────────────────────────
+interface WalkerProps {
+  tiers: ChickenTier[];
+}
 
-  // ─── PROCEDURAL AUDIO (SOUND EFFECT GENERATOR) ─────────────────────────────
-  const playTone = useCallback((freq: number, type: OscillatorType, duration: number) => {
-    if (!audioOn) return;
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    } catch (_) {}
-  }, [audioOn]);
+function Yard({ tiers }: WalkerProps) {
+  return (
+    <div style={{ width: "100%", height: 230, position: "relative", overflow: "hidden" }}>
+      {/* Sky */}
+      <div style={{ position: "absolute", inset: 0, height: 90, background: "#87ceeb" }} />
+      <div style={{ position: "absolute", top: 10, left: 14, width: 30, height: 30, background: "#f5c518", borderRadius: "50%" }} />
+      <div style={{ position: "absolute", top: 14, left: 75, width: 48, height: 16, background: "#fff", borderRadius: 20, opacity: 0.85 }} />
+      <div style={{ position: "absolute", top: 22, left: 210, width: 34, height: 13, background: "#fff", borderRadius: 20, opacity: 0.8 }} />
+      <div style={{ position: "absolute", top: 9, left: 305, width: 26, height: 11, background: "#fff", borderRadius: 20, opacity: 0.75 }} />
 
-  // ─── NOTIFICATION UTILS ────────────────────────────────────────────────────
-  const triggerToast = useCallback((msg: string, type: Toast["type"] = "info") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 2500);
-  }, []);
+      {/* Grass */}
+      <div style={{ position: "absolute", top: 90, left: 0, right: 0, bottom: 55, background: "#7ab648" }} />
 
-  const spawnFloat = useCallback((text: string, x: number, y: number) => {
-    const id = Date.now() + Math.random();
-    setFloats(f => [...f, { id, text, x, y }]);
-    setTimeout(() => {
-      setFloats(f => f.filter(item => item.id !== id));
-    }, 1000);
-  }, []);
+      {/* Trees */}
+      <Tree left={14} topSize={32} trunkH={22} />
+      <Tree left={48} topSize={22} trunkH={15} topColor="#1d5c10" />
+      <Tree left={122} topSize={26} trunkH={18} />
 
-  // ─── CALCULATE PASIVE INCOME ────────────────────────────────────────────────
-  const getIncomePerSecond = useCallback(() => {
-    let base = 0;
-    grid.forEach(cell => {
-      if (cell) {
-        base += CHICKEN_TIERS[cell.tier].idlePerSec;
-      }
-    });
-    return boostTime > 0 ? base * 2 : base;
-  }, [grid, boostTime]);
+      {/* Coop */}
+      <div style={{ position: "absolute", bottom: 55, right: 12, width: 58 }}>
+        <div style={{ width: 0, height: 0, borderLeft: "30px solid transparent", borderRight: "30px solid transparent", borderBottom: "26px solid #b94020", margin: "0 auto" }} />
+        <div style={{ width: 58, height: 46, background: "#d4a45a", border: "2px solid #a07030", borderRadius: "3px 3px 0 0", position: "relative", marginTop: -1 }}>
+          <div style={{ width: 12, height: 10, background: "#87ceeb", border: "1px solid #a07030", borderRadius: 2, position: "absolute", top: 7, left: 5 }} />
+          <div style={{ width: 16, height: 20, background: "#5a3010", borderRadius: "8px 8px 0 0", position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)" }} />
+        </div>
+      </div>
+      <div style={{ position: "absolute", bottom: 101, right: 74, fontSize: 10, background: "rgba(40,15,0,.6)", color: "#ffd080", padding: "1px 5px", borderRadius: 7, fontWeight: 700 }}>
+        Kandang
+      </div>
 
-  // GAME LOOP INTERVAL (1 TICK PER SECOND)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Pasif income
-      const inc = getIncomePerSecond();
-      if (inc > 0) {
-        setEggs(e => e + inc);
-        setTaskProgress(tp => ({ ...tp, t4: (tp.t4 || 0) + inc }));
-      }
+      {/* Walkers */}
+      {tiers.map((t, i) => (
+        <Walker key={t.tier} tier={t} index={i} />
+      ))}
 
-      // Hitung mundur timer
-      setBoostTime(t => (t > 0 ? t - 1 : 0));
-      setAutoMergeTime(t => (t > 0 ? t - 1 : 0));
-      setAutoGenTime(t => (t > 0 ? t - 1 : 0));
-      setAutoMergeCooldown(t => (t > 0 ? t - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [getIncomePerSecond]);
+      {/* Ground */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 55, background: "#c8a05a", borderTop: "3px solid #a07840" }} />
+      <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", gap: 10, padding: "0 10px" }}>
+        <div style={{ height: 3, flex: 1, background: "#8b6030", borderRadius: 2, opacity: 0.4 }} />
+        <div style={{ height: 3, flex: 2, background: "#8b6030", borderRadius: 2, opacity: 0.35 }} />
+        <div style={{ height: 3, flex: 1, background: "#8b6030", borderRadius: 2, opacity: 0.4 }} />
+      </div>
+    </div>
+  );
+}
 
-  // LOGIKA AUTO GENERATE (Setiap 1 detik jika aktif)
-  useEffect(() => {
-    if (autoGenTime <= 0) return;
-    const gTimer = setInterval(() => {
-      triggerGenerateChicken(true);
-    }, 1000);
-    return () => clearInterval(gTimer);
-  }, [autoGenTime, eggs, grid]);
+interface TreeProps {
+  left: number;
+  topSize: number;
+  trunkH: number;
+  topColor?: string;
+}
 
-  // LOGIKA AUTO MERGE (Setiap 1.5 detik jika aktif)
-  useEffect(() => {
-    if (autoMergeTime <= 0) return;
-    const mTimer = setInterval(() => {
-      // Cari dua sel dengan tier sama untuk di-merge otomatis
-      let done = false;
-      for (let i = 0; i < grid.length; i++) {
-        if (done) break;
-        const c1 = grid[i];
-        if (!c1) continue;
-        for (let j = i + 1; j < grid.length; j++) {
-          const c2 = grid[j];
-          if (c2 && c2.tier === c1.tier && c1.tier < 20) {
-            // Lakukan Merge otomatis
-            setGrid(g => {
-              const next = [...g];
-              const nextTier = (c1.tier + 1) as TierId;
-              next[i] = { tier: nextTier, id: Date.now() + Math.random() };
-              next[j] = null;
-              return next;
-            });
-            if (c1.tier + 1 > maxTierUnlocked) {
-              setMaxTierUnlocked(c1.tier + 1);
-            }
-            setTaskProgress(tp => ({ ...tp, t2: (tp.t2 || 0) + 1 }));
-            playTone(400 + c1.tier * 30, "triangle", 0.15);
-            done = true;
-            break;
-          }
-        }
-      }
-    }, 1500);
-    return () => clearInterval(mTimer);
-  }, [autoMergeTime, grid, maxTierUnlocked, playTone]);
+function Tree({ left, topSize, trunkH, topColor = "#2d7a1a" }: TreeProps) {
+  return (
+    <div style={{ position: "absolute", bottom: 55, left, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ width: topSize, height: topSize, background: topColor, borderRadius: "50%" }} />
+      <div style={{ width: 8, height: trunkH, background: "#6b3a1a", borderRadius: 2, marginTop: -6 }} />
+    </div>
+  );
+}
 
-  // ─── ACTION HANDLERS ───────────────────────────────────────────────────────
-  const triggerGenerateChicken = (isAuto = false) => {
-    const cost = 30;
-    if (!isAuto && eggs < cost) {
-      triggerToast("Telur tidak cukup untuk menetaskan ayam!", "err");
-      return;
-    }
+const WALKER_PARAMS = [
+  { goRight: true,  dur: 7,  delay: 0,   size: 24, bottom: 60 },
+  { goRight: false, dur: 9,  delay: 1.5, size: 22, bottom: 66 },
+  { goRight: true,  dur: 6,  delay: 3.0, size: 20, bottom: 62 },
+  { goRight: false, dur: 11, delay: 0.5, size: 24, bottom: 68 },
+  { goRight: true,  dur: 8,  delay: 2.0, size: 22, bottom: 64 },
+  { goRight: false, dur: 13, delay: 4.0, size: 20, bottom: 70 },
+  { goRight: true,  dur: 10, delay: 1.0, size: 24, bottom: 63 },
+  { goRight: false, dur: 7,  delay: 2.5, size: 22, bottom: 67 },
+  { goRight: true,  dur: 9,  delay: 3.5, size: 20, bottom: 61 },
+  { goRight: false, dur: 12, delay: 0.8, size: 24, bottom: 65 },
+];
 
-    // Cari slot grid kosong
-    const emptyIdx = grid.findIndex(c => c === null);
-    if (emptyIdx === -1) {
-      if (!isAuto) triggerToast("Kandang penuh! Silakan gabungkan ayam.", "err");
-      return;
-    }
+interface WalkerItemProps {
+  tier: ChickenTier;
+  index: number;
+}
 
-    if (!isAuto) {
-      setEggs(e => e - cost);
-      setTaskProgress(tp => ({ ...tp, t1: (tp.t1 || 0) + 1 }));
-    } else {
-      if (eggs < cost) return; // batalkan jika auto tapi telur habis
-      setEggs(e => e - cost);
-    }
-
-    setGrid(g => {
-      const next = [...g];
-      next[emptyIdx] = { tier: 1, id: Date.now() + Math.random() };
-      return next;
-    });
-    playTone(300, "sine", 0.1);
-  };
-
-  const handleCellClick = (idx: number) => {
-    const cell = grid[idx];
-
-    if (selectedCell === null) {
-      if (cell) setSelectedCell(idx);
-    } else {
-      if (selectedCell === idx) {
-        setSelectedCell(null);
-        return;
-      }
-
-      const fromCell = grid[selectedCell];
-      if (!fromCell) {
-        setSelectedCell(null);
-        return;
-      }
-
-      if (!cell) {
-        // Pindahkan ayam ke slot kosong
-        setGrid(g => {
-          const next = [...g];
-          next[idx] = fromCell;
-          next[selectedCell] = null;
-          return next;
-        });
-        setSelectedCell(null);
-        playTone(250, "sine", 0.08);
-      } else if (cell.tier === fromCell.tier && cell.tier < 20) {
-        // Gabungkan / Merge ayam ke tier yang lebih tinggi
-        const nextTier = (cell.tier + 1) as TierId;
-        setGrid(g => {
-          const next = [...g];
-          next[idx] = { tier: nextTier, id: Date.now() + Math.random() };
-          next[selectedCell] = null;
-          return next;
-        });
-        if (nextTier > maxTierUnlocked) {
-          setMaxTierUnlocked(nextTier);
-          triggerToast(`Hebat! Kamu membuka Ayam ${CHICKEN_TIERS[nextTier].name} (Tier ${nextTier})!`, "success");
-        }
-        setTaskProgress(tp => ({ ...tp, t2: (tp.t2 || 0) + 1 }));
-        setSelectedCell(null);
-        playTone(500, "triangle", 0.2);
-      } else {
-        // Tukar posisi jika tier berbeda
-        setGrid(g => {
-          const next = [...g];
-          next[selectedCell] = cell;
-          next[idx] = fromCell;
-          return next;
-        });
-        setSelectedCell(null);
-      }
-    }
-  };
-
-  const startScratch = () => {
-    if (scratchers <= 0) {
-      triggerToast("Kamu tidak memiliki ceker ayam galian!", "err");
-      return;
-    }
-    setScratchers(s => s - 1);
-    setTaskProgress(tp => ({ ...tp, t3: (tp.t3 || 0) + 1 }));
-
-    const roll = Math.random();
-    if (roll < 0.6) {
-      const eAmt = Math.floor(Math.random() * 80) + 20;
-      setEggs(e => e + eAmt);
-      triggerToast(`Kamu menggali halaman dan menemukan 🥚 ${eAmt} Telur!`, "success");
-      playTone(600, "sine", 0.1);
-    } else if (roll < 0.9) {
-      const wAmt = Math.floor(Math.random() * 3) + 1;
-      setWorms(w => w + wAmt);
-      triggerToast(`Kamu menggali tumpukan tanah dan mendapat 🪱 ${wAmt} Cacing!`, "success");
-      playTone(700, "sine", 0.12);
-    } else {
-      setEggs(e => e + 1000);
-      triggerToast("Luar Biasa! Kamu menemukan peti kuno berisi 🥚 1000 Telur!", "success");
-      playTone(900, "triangle", 0.3);
-    }
-  };
-
-  const spinWheel = () => {
-    const today = new Date().toDateString();
-    if (lastSpinDate === today) {
-      triggerToast("Kamu sudah memutar spin hari ini. Kembali besok!", "err");
-      return;
-    }
-    if (isSpinning) return;
-
-    setIsSpinning(true);
-    // Hitung distribusi probabilitas rewards
-    const rand = Math.random() * 100;
-    let sum = 0;
-    let rewardIdx = 0;
-    for (let i = 0; i < SPIN_REWARDS.length; i++) {
-      sum += SPIN_REWARDS[i].chance;
-      if (rand <= sum) {
-        rewardIdx = i;
-        break;
-      }
-    }
-
-    const sectorAngle = 360 / SPIN_REWARDS.length;
-    const baseRotations = 5 * 360; 
-    const targetAngle = baseRotations + (360 - (rewardIdx * sectorAngle + sectorAngle / 2));
-
-    setSpinAngle(targetAngle);
-
-    setTimeout(() => {
-      const r = SPIN_REWARDS[rewardIdx];
-      if (r.eggs > 0) setEggs(e => e + r.eggs);
-      if (r.worms > 0) setWorms(w => w + r.worms);
-      if (r.boost) setBoostTime(t => t + 300);
-
-      setLastSpinDate(today);
-      setIsSpinning(false);
-      triggerToast(`Selamat! Kamu mendapatkan: ${r.label}`, "success");
-      playTone(800, "triangle", 0.25);
-    }, 3500);
-  };
-
-  const claimDailyCheckIn = () => {
-    const today = new Date().toDateString();
-    if (lastCheckIn === today) {
-      triggerToast("Kamu sudah check-in hari ini!", "err");
-      return;
-    }
-
-    const nextStreak = checkInStreak >= 7 ? 1 : checkInStreak + 1;
-    const reward = nextStreak * 100;
-    setEggs(e => e + reward);
-    setCheckInStreak(nextStreak);
-    setLastCheckIn(today);
-    triggerToast(`Check-in Hari ke-${nextStreak} sukses! +🥚 ${reward} Telur.`, "success");
-    playTone(650, "sine", 0.15);
-  };
-
-  const claimTask = (id: string) => {
-    const t = TASKS_DEFS.find(item => item.id === id);
-    if (!t) return;
-    const prog = taskProgress[id] || 0;
-    if (prog < t.target) {
-      triggerToast("Target misi belum tercapai!", "err");
-      return;
-    }
-    if (taskClaimed[id]) {
-      triggerToast("Hadiah misi ini sudah diambil!", "err");
-      return;
-    }
-
-    setTaskClaimed(prev => ({ ...prev, [id]: true }));
-    if (t.rewardEggs > 0) setEggs(e => e + t.rewardEggs);
-    if (t.rewardWorms > 0) setWorms(w => w + t.rewardWorms);
-    triggerToast(`Misi Selesai! Mengklaim +🥚${t.rewardEggs} & +🪱${t.rewardWorms}`, "success");
-    playTone(750, "triangle", 0.2);
-  };
-
-  const buyShopItem = (type: string, costWorms: number, costEggs: number) => {
-    if (costWorms > 0 && worms < costWorms) {
-      triggerToast("Cacing premium tidak mencukupi!", "err");
-      return;
-    }
-    if (costEggs > 0 && eggs < costEggs) {
-      triggerToast("Telur tidak mencukupi!", "err");
-      return;
-    }
-
-    setWorms(w => w - costWorms);
-    setEggs(e => e - costEggs);
-
-    if (type === "auto_merge") {
-      setAutoMergeTime(t => t + 60);
-      triggerToast("Membeli Tiket Auto-Merge 1 Menit!", "success");
-    } else if (type === "auto_gen") {
-      setAutoGenTime(t => t + 60);
-      triggerToast("Membeli Tiket Auto-Generate 1 Menit!", "success");
-    } else if (type === "boost_2x") {
-      setBoostTime(t => t + 300);
-      triggerToast("Mengaktifkan Boost Pendapatan x2 (5 Menit)!", "success");
-    } else if (type === "buy_worms") {
-      setWorms(w => w + 5);
-      triggerToast("Berhasil menukar Telur dengan 5 Cacing!", "success");
-    } else if (type === "buy_scratchers") {
-      setScratchers(s => s + 3);
-      triggerToast("Berhasil menukar Telur dengan 3 Tiket Ceker!", "success");
-    }
-    playTone(500, "sine", 0.1);
-  };
-
-  const saveToLeaderboard = () => {
-    if (!playerName.trim()) {
-      triggerToast("Ketik nama petarungmu terlebih dahulu!", "err");
-      return;
-    }
-    const newEntry: LeaderEntry = {
-      name: playerName,
-      eggs: eggs,
-      maxTier: maxTierUnlocked,
-      date: new Date().toLocaleDateString(),
-    };
-    const nextList = [...leaderboard, newEntry].sort((a, b) => b.eggs - a.eggs).slice(0, 10);
-    setLeaderboard(nextList);
-    localStorage.setItem("petarung_v4_leader", JSON.stringify(nextList));
-    triggerToast("Skor berhasil dipublikasikan ke Peringkat Lokal!", "success");
-  };
-
-  // Menghapus fungsi clearLeaderboard karena tombolnya dihapus
-
-  const triggerMainTap = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const gain = 1;
-    setEggs(prev => prev + gain);
-    setTaskProgress(tp => ({ ...tp, t4: (tp.t4 || 0) + gain }));
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    spawnFloat(`+${gain}`, x, y);
-    playTone(450, "sine", 0.05);
-  };
-
-  const handleToggleAutoMergeButton = () => {
-    if (autoMergeTime > 0) return;
-    if (autoMergeCooldown > 0) {
-      triggerToast(`Auto-Merge sedang Cooldown selama ${autoMergeCooldown}d`, "err");
-      return;
-    }
-    setAutoMergeTime(60);
-    setAutoMergeCooldown(30);
-    triggerToast("Otomatisasi Penggabungan Kandang Aktif (60 detik)", "info");
-  };
-
-  // ─── STYLES HELPER ─────────────────────────────────────────────────────────
-  const bStyle = (bg: string, border: string): React.CSSProperties => ({
-    background: bg,
-    border: `1px solid ${border}`,
-    color: "#fff",
-    borderRadius: 10,
-    padding: "10px 18px",
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  });
-
-  const topBarItem = {
-    background: "#1e1e40",
-    padding: "6px 12px",
-    borderRadius: 8,
-    border: "1px solid #3d3d6e",
-    fontSize: 13,
-    fontWeight: 800,
-    display: "flex",
-    alignItems: "center",
-    gap: 5,
-  };
+function Walker({ tier, index }: WalkerItemProps) {
+  const p = WALKER_PARAMS[index % WALKER_PARAMS.length];
+  const animName = `walk-${tier.tier}`;
+  const from = p.goRight ? "-30px" : "380px";
+  const to   = p.goRight ? "380px"  : "-30px";
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0a0a16", color: "#fff", fontFamily: "sans-serif", padding: 15 }}>
-      <div style={{ maxWidth: 500, margin: "0 auto", display: "flex", flexDirection: "column", gap: 15 }}>
-        
-        {/* TOAST PANEL */}
-        {toast && (
-          <div style={{
-            position: "fixed", top: 15, left: "50%", transform: "translateX(-50%)",
-            background: toast.type === "err" ? "#ef4444" : toast.type === "success" ? "#10b981" : "#3b82f6",
-            padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, zIndex: 9999, boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
-          }}>
-            {toast.msg}
-          </div>
-        )}
+    <>
+      <style>{`
+        @keyframes ${animName} {
+          0%   { left: ${from}; }
+          100% { left: ${to}; }
+        }
+      `}</style>
+      <div style={{
+        position: "absolute",
+        bottom: p.bottom,
+        fontSize: p.size,
+        lineHeight: 1,
+        pointerEvents: "none",
+        animation: `${animName} ${p.dur}s linear ${p.delay}s infinite`,
+        transform: p.goRight ? "scaleX(1)" : "scaleX(-1)",
+        userSelect: "none",
+      }}>
+        {tier.emoji}
+      </div>
+    </>
+  );
+}
 
-        {/* TOP HUB HEADER */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111126", padding: 12, borderRadius: 12, border: "1px solid #27274a" }}>
-          <h1 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "#fbbf24", letterSpacing: 0.5 }}>🐔 PETARUNG v4</h1>
-          <button onClick={() => setAudioOn(!audioOn)} style={{ background: audioOn ? "#10b981" : "#4b5563", border: "none", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-            {audioOn ? "🔊 AUDIO ON" : "🔇 AUDIO MUTED"}
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export default function Home() {
+  const [now, setNow]             = useState(Date.now());
+  const [eggs, setEggs]           = useState<number>(50);
+  const [worms, setWorms]         = useState<number>(10);
+  const [cekers, setCekers]       = useState<number>(3);
+  const [grid, setGrid]           = useState<(GridCell | null)[]>(Array(GRID_SIZE).fill(null));
+  const [screen, setScreen]       = useState<Screen>("farm");
+  const [selectedCell, setSelectedCell] = useState<number | null>(null);
+
+  const [boostActive, setBoostActive]   = useState(false);
+  const [boostEndTime, setBoostEndTime] = useState(0);
+
+  // Auto Tickets States
+  const [autoMergeTix, setAutoMergeTix] = useState(0);
+  const [autoGenTix, setAutoGenTix]     = useState(0);
+  const [autoMergeEnd, setAutoMergeEnd] = useState(0);
+  const [autoMergeCD, setAutoMergeCD]   = useState(0);
+  const [autoGenEnd, setAutoGenEnd]     = useState(0);
+
+  const [spinUsedToday, setSpinUsedToday] = useState(false);
+  const [lastSpinDate, setLastSpinDate]   = useState("");
+  const [spinResult, setSpinResult]       = useState<SpinReward | null>(null);
+  const [spinning, setSpinning]           = useState(false);
+  const [spinAngle, setSpinAngle]         = useState(0);
+
+  const [isDigging, setIsDigging]     = useState(false);
+  const [digResult, setDigResult]     = useState<DigReward | null>(null);
+
+  const [taskProgress, setTaskProgress] = useState<Record<string, number>>({});
+  const [taskClaimed, setTaskClaimed]   = useState<Record<string, boolean>>({});
+  const [checkinDay, setCheckinDay]     = useState(0);
+  const [checkinDate, setCheckinDate]   = useState("");
+
+  const [toast, setToast]   = useState<Toast | null>(null);
+  const [floats, setFloats] = useState<FloatItem[]>([]);
+  const [taps, setTaps]     = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
+
+  const [musicOn, setMusicOn] = useState(false);
+
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [playerName, setPlayerName]   = useState("");
+  const [nameInput, setNameInput]     = useState("");
+
+  const audioCtxRef  = useRef<AudioContext | null>(null);
+  const bgStopRef    = useRef<(() => void) | null>(null);
+  const floatId      = useRef(0);
+  const idleRef      = useRef({ grid, boostActive, boostEndTime, autoGenEnd, eggs });
+
+  // Update clock per second for UI timers
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Sync ref
+  useEffect(() => { 
+    idleRef.current = { grid, boostActive, boostEndTime, autoGenEnd, eggs }; 
+  }, [grid, boostActive, boostEndTime, autoGenEnd, eggs]);
+
+  // ── Load save ──
+  useEffect(() => {
+    const s = loadSave();
+    if (!s) return;
+    if (typeof s.eggs === "number")         setEggs(s.eggs);
+    if (typeof s.worms === "number")        setWorms(s.worms);
+    if (typeof s.cekers === "number")       setCekers(s.cekers);
+    if (Array.isArray(s.grid))              setGrid(s.grid as (GridCell | null)[]);
+    if (typeof s.boostEndTime === "number") {
+      setBoostEndTime(s.boostEndTime as number);
+      setBoostActive(Date.now() < (s.boostEndTime as number));
+    }
+    
+    // Load Tickets
+    if (typeof s.autoMergeTix === "number") setAutoMergeTix(s.autoMergeTix);
+    if (typeof s.autoGenTix === "number")   setAutoGenTix(s.autoGenTix);
+    if (typeof s.autoMergeEnd === "number") setAutoMergeEnd(s.autoMergeEnd);
+    if (typeof s.autoMergeCD === "number")  setAutoMergeCD(s.autoMergeCD);
+    if (typeof s.autoGenEnd === "number")   setAutoGenEnd(s.autoGenEnd);
+
+    if (typeof s.spinUsedToday === "boolean") setSpinUsedToday(s.spinUsedToday);
+    if (typeof s.lastSpinDate === "string") setLastSpinDate(s.lastSpinDate);
+    if (s.taskProgress)                     setTaskProgress(s.taskProgress as Record<string, number>);
+    if (s.taskClaimed)                      setTaskClaimed(s.taskClaimed as Record<string, boolean>);
+    if (typeof s.checkinDay === "number")   setCheckinDay(s.checkinDay);
+    if (typeof s.checkinDate === "string")  setCheckinDate(s.checkinDate);
+    if (typeof s.taps === "number")         setTaps(s.taps);
+    if (typeof s.totalEarned === "number")  setTotalEarned(s.totalEarned);
+    if (typeof s.playerName === "string")   setPlayerName(s.playerName);
+    
+    try {
+      const lb = localStorage.getItem(LEADER_KEY);
+      if (lb) setLeaderboard(JSON.parse(lb) as LeaderEntry[]);
+    } catch {}
+  }, []);
+
+  // ── Save ──
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        eggs, worms, cekers, grid, boostEndTime,
+        autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd,
+        spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
+        checkinDay, checkinDate, taps, totalEarned, playerName,
+      }));
+    } catch {}
+  }, [eggs, worms, cekers, grid, boostEndTime, autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName]);
+
+  // ── Reset spin daily ──
+  useEffect(() => {
+    if (lastSpinDate !== todayStr()) setSpinUsedToday(false);
+  }, [lastSpinDate]);
+
+  // ── Audio Engine (SFX & Music) ──
+  function initAudio() {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }
+
+  function playMergeSound() {
+    if (!musicOn) return;
+    try {
+      const ctx = initAudio();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (musicOn) startMusic();
+    else stopMusic();
+    return () => stopMusic();
+  }, [musicOn]);
+
+  function startMusic() {
+    try {
+      const ctx = initAudio();
+      stopMusic();
+      const notes = [329.63, 392.00, 440.00, 523.25, 659.25, 587.33];
+      const seq   = [0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 4, 5];
+      let i = 0;
+      let stopped = false;
+      function playNext() {
+        if (stopped || !audioCtxRef.current) return;
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.value = notes[seq[i % seq.length]];
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.45);
+        i++;
+        const tid = setTimeout(playNext, 450);
+        bgStopRef.current = () => { stopped = true; clearTimeout(tid); };
+      }
+      playNext();
+    } catch {}
+  }
+
+  function stopMusic() {
+    bgStopRef.current?.();
+    bgStopRef.current = null;
+  }
+
+  // ── Idle income ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const { grid: g, boostActive: ba, boostEndTime: bet } = idleRef.current;
+      const mult = ba && Date.now() < bet ? 2 : 1;
+      const earned = g.reduce((s, c) => s + (c ? getTier(c.tier).idlePerSec * mult : 0), 0);
+      if (earned <= 0) return;
+      setEggs(e => e + earned);
+      setTotalEarned(t => t + earned);
+      trackTask("earn", earned);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Boost expiry ──
+  useEffect(() => {
+    if (!boostActive) return;
+    const ms = boostEndTime - Date.now();
+    if (ms <= 0) { setBoostActive(false); return; }
+    const t = setTimeout(() => { setBoostActive(false); showToast("Boost habis!"); }, ms);
+    return () => clearTimeout(t);
+  }, [boostActive, boostEndTime]);
+
+  // ── Auto Merge Loop ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Date.now() < autoMergeEnd) {
+        setGrid(g => autoMergeGrid(g));
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [autoMergeEnd, musicOn]);
+
+  // ── Auto Generate Loop ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const { grid: g, autoGenEnd: ae, eggs: curEggs } = idleRef.current;
+      if (Date.now() < ae && curEggs >= HATCH_COST) {
+        const empty = g.findIndex(c => c === null);
+        if (empty !== -1) {
+          setEggs(e => e - HATCH_COST);
+          setGrid(prev => {
+            const n = [...prev];
+            if (n[empty] === null) n[empty] = { tier: 1, id: Date.now() };
+            return n;
+          });
+          setTaps(t => t + 1);
+          trackTask("tap");
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Toast ──
+  function showToast(msg: string, type: Toast["type"] = "info") {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  // ── Float numbers ──
+  function addFloat(text: string, x: number, y: number) {
+    const id = floatId.current++;
+    setFloats(f => [...f, { id, text, x, y }]);
+    setTimeout(() => setFloats(f => f.filter(fi => fi.id !== id)), 900);
+  }
+
+  // ── Task tracking ──
+  const trackTask = useCallback((type: TaskDef["type"], amount = 1) => {
+    setTaskProgress(prev => {
+      const next = { ...prev };
+      DAILY_TASKS.forEach(t => {
+        if (t.type === type) next[t.id] = (next[t.id] || 0) + amount;
+      });
+      return next;
+    });
+  }, []);
+
+  // ── Tap main ──
+  function tapMain(e: React.MouseEvent<HTMLButtonElement>) {
+    const mult = boostActive && Date.now() < boostEndTime ? 2 : 1;
+    const gain = mult;
+    setEggs(eg => eg + gain);
+    setTotalEarned(t => t + gain);
+    setTaps(t => t + 1);
+    trackTask("tap");
+    trackTask("earn", gain);
+    const rect = e.currentTarget.getBoundingClientRect();
+    addFloat(`+${gain}🥚`, e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  // ── Hatch ──
+  function hatchChicken() {
+    if (eggs < HATCH_COST) { showToast("Telur tidak cukup!", "err"); return; }
+    const empty = grid.findIndex(c => c === null);
+    if (empty === -1) { showToast("Grid penuh!", "err"); return; }
+    setEggs(e => e - HATCH_COST);
+    setGrid(g => { const n = [...g]; n[empty] = { tier: 1, id: Date.now() }; return n; });
+    trackTask("tap");
+    showToast("Ayam baru menetas! 🐣");
+  }
+
+  // ── Merge grid ──
+  function cellClick(idx: number) {
+    if (selectedCell === null) {
+      if (!grid[idx]) return;
+      setSelectedCell(idx);
+    } else {
+      if (selectedCell === idx) { setSelectedCell(null); return; }
+      const a = grid[selectedCell];
+      const b = grid[idx];
+      if (a && b && a.tier === b.tier && a.tier < 20) {
+        setGrid(g => {
+          const n = [...g];
+          n[selectedCell] = null;
+          n[idx] = { tier: (a.tier + 1) as TierId, id: Date.now() };
+          return n;
+        });
+        const newTier = getTier((a.tier + 1) as TierId);
+        playMergeSound();
+        showToast(`Merge! ${newTier.emoji} ${newTier.name} (${newTier.rarity})`);
+        trackTask("merge");
+      } else if (!b) {
+        setGrid(g => {
+          const n = [...g];
+          n[idx] = a;
+          n[selectedCell] = null;
+          return n;
+        });
+      } else {
+        setSelectedCell(idx);
+        return;
+      }
+      setSelectedCell(null);
+    }
+  }
+
+  function autoMergeGrid(g: (GridCell | null)[]): (GridCell | null)[] {
+    const arr = [...g];
+    for (let i = 0; i < arr.length; i++) {
+      if (!arr[i] || arr[i]!.tier >= 20) continue;
+      for (let j = i + 1; j < arr.length; j++) {
+        if (!arr[j]) continue;
+        if (arr[j]!.tier === arr[i]!.tier) {
+          arr[j] = { tier: (arr[i]!.tier + 1) as TierId, id: Date.now() };
+          arr[i] = null;
+          playMergeSound();
+          trackTask("merge");
+          return arr;
+        }
+      }
+    }
+    return arr;
+  }
+
+  // ── Scratch (Dig) ──
+  function doDig() {
+    if (cekers < 1) { showToast("Ceker tidak cukup!", "err"); return; }
+    if (isDigging) return;
+    setCekers(c => c - 1);
+    setDigResult(null);
+    setIsDigging(true);
+    setTimeout(() => {
+      const r = weightedPick(DIG_REWARDS);
+      setEggs(e => e + r.eggs);
+      setWorms(w => w + r.worms);
+      if (r.eggs) { setTotalEarned(t => t + r.eggs); trackTask("earn", r.eggs); }
+      setDigResult(r);
+      trackTask("dig");
+      setIsDigging(false);
+    }, 1500);
+  }
+
+  // ── Spin ──
+  function doSpin() {
+    if (spinUsedToday) { showToast("Spin harian sudah digunakan!", "err"); return; }
+    if (spinning) return;
+    setSpinning(true);
+    setSpinResult(null);
+    const result = weightedPick(SPIN_REWARDS);
+    const idx    = SPIN_REWARDS.indexOf(result);
+    const sectors = SPIN_REWARDS.length;
+    const deg = 360 * 5 + (360 - (idx / sectors) * 360) - 180 / sectors;
+    setSpinAngle(prev => prev + deg);
+    setTimeout(() => {
+      setEggs(e => e + result.eggs);
+      setWorms(w => w + result.worms);
+      if (result.boost) { setBoostActive(true); setBoostEndTime(Date.now() + BOOST_DURATION_MS); }
+      if (result.eggs)  { setTotalEarned(t => t + result.eggs); trackTask("earn", result.eggs); }
+      setSpinResult(result);
+      setSpinUsedToday(true);
+      setLastSpinDate(todayStr());
+      setSpinning(false);
+    }, 3200);
+  }
+
+  // ── Daily tasks ──
+  function claimTask(task: TaskDef) {
+    const prog = taskProgress[task.id] || 0;
+    if (prog < task.target) { showToast("Misi belum selesai!", "err"); return; }
+    if (taskClaimed[task.id]) { showToast("Sudah diklaim!", "err"); return; }
+    setEggs(e => e + task.rewardEggs);
+    setWorms(w => w + task.rewardWorms);
+    if (task.rewardEggs) setTotalEarned(t => t + task.rewardEggs);
+    setTaskClaimed(c => ({ ...c, [task.id]: true }));
+    showToast(`+${task.rewardEggs}🥚 ${task.rewardWorms > 0 ? `+${task.rewardWorms}🪱` : ""} diklaim!`);
+  }
+
+  function doCheckin() {
+    const today = todayStr();
+    if (checkinDate === today) { showToast("Sudah check-in hari ini!", "err"); return; }
+    const nextDay = checkinDay < 6 ? checkinDay + 1 : 0;
+    const reward  = CHECKIN_REWARDS[nextDay] ?? CHECKIN_REWARDS[0];
+    setEggs(e => e + reward);
+    setTotalEarned(t => t + reward);
+    setCheckinDay(nextDay);
+    setCheckinDate(today);
+    showToast(`Check-in hari ${nextDay + 1}: +${reward}🥚!`, "success");
+  }
+
+  // ── Auto Tickets Handlers ──
+  function triggerAutoMerge() {
+    if (autoMergeTix <= 0) { showToast("Tiket Auto-Merge habis!", "err"); return; }
+    if (now < autoMergeEnd) { showToast("Auto-Merge masih aktif!", "err"); return; }
+    if (now < autoMergeCD) { showToast(`Cooldown! Tunggu ${Math.ceil((autoMergeCD - now)/1000)}s`, "err"); return; }
+    setAutoMergeTix(t => t - 1);
+    setAutoMergeEnd(Date.now() + AUTO_DUR_MS);
+    setAutoMergeCD(Date.now() + AUTO_DUR_MS + AUTO_MERGE_CD_MS);
+    showToast("Auto-Merge Aktif! (1 Menit) 🤖", "success");
+  }
+
+  function triggerAutoGen() {
+    if (autoGenTix <= 0) { showToast("Tiket Auto-Gen habis!", "err"); return; }
+    if (now < autoGenEnd) { showToast("Auto-Generate masih aktif!", "err"); return; }
+    setAutoGenTix(t => t - 1);
+    setAutoGenEnd(Date.now() + AUTO_DUR_MS);
+    showToast("Auto-Generate Aktif! (1 Menit) 🐣", "success");
+  }
+
+  // ── Shop ──
+  function buyBoost() {
+    if (worms < BOOST_COST_WORMS) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - BOOST_COST_WORMS);
+    setBoostActive(true);
+    setBoostEndTime(Date.now() + BOOST_DURATION_MS);
+    showToast("Boost x2 aktif 5 menit! ⚡");
+  }
+
+  function buyAutoMergeTix() {
+    if (worms < AUTO_TICKET_COST) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - AUTO_TICKET_COST);
+    setAutoMergeTix(t => t + 1);
+    showToast("+1 Tiket Auto-Merge dibeli! 🎫");
+  }
+
+  function buyAutoGenTix() {
+    if (worms < AUTO_TICKET_COST) { showToast("Cacing tidak cukup!", "err"); return; }
+    setWorms(w => w - AUTO_TICKET_COST);
+    setAutoGenTix(t => t + 1);
+    showToast("+1 Tiket Auto-Generate dibeli! 🎫");
+  }
+
+  function buyWorms() {
+    if (eggs < WORM_COST) { showToast("Telur tidak cukup!", "err"); return; }
+    setEggs(e => e - WORM_COST);
+    setWorms(w => w + 5);
+    showToast("+5 🪱 cacing dibeli!");
+  }
+
+  function buyCekers() {
+    if (eggs < SHOVEL_COST_EGGS) { showToast("Telur tidak cukup!", "err"); return; }
+    setEggs(e => e - SHOVEL_COST_EGGS);
+    setCekers(c => c + 3);
+    showToast("+3 🐾 ceker ayam dibeli!");
+  }
+
+  function clearGrid() {
+    setGrid(Array(GRID_SIZE).fill(null));
+    showToast("Kandang dikosongkan!", "info");
+  }
+
+  // ── Leaderboard ──
+  function submitScore() {
+    const name = nameInput.trim() || "Pemain";
+    const entry: LeaderEntry = {
+      name,
+      eggs: Math.floor(totalEarned),
+      maxTier: maxTierInGrid,
+      date: todayStr(),
+    };
+    setPlayerName(name);
+    setNameInput("");
+    setLeaderboard(prev => {
+      const filtered = prev.filter(e => e.name !== name);
+      const updated  = [...filtered, entry].sort((a, b) => b.eggs - a.eggs).slice(0, 20);
+      try { localStorage.setItem(LEADER_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    showToast(`Skor ${name} disimpan! 🏆`, "success");
+  }
+
+  function clearLeaderboard() {
+    setLeaderboard([]);
+    try { localStorage.removeItem(LEADER_KEY); } catch {}
+    showToast("Leaderboard direset!", "info");
+  }
+
+  // ── Derived values ──
+  const totalIdle = grid.reduce((s, c) => {
+    if (!c) return s;
+    const base = getTier(c.tier).idlePerSec;
+    return s + base * (boostActive && Date.now() < boostEndTime ? 2 : 1);
+  }, 0);
+
+  const maxTierInGrid = grid.reduce((m, c) => {
+    if (c && c.tier > m) return c.tier;
+    return m;
+  }, 0);
+
+  const walkingTiers = maxTierInGrid > 0
+    ? CHICKEN_TIERS.slice(0, maxTierInGrid)
+    : [];
+
+  const chickenCount = grid.filter(Boolean).length;
+
+  const isAmActive = now < autoMergeEnd;
+  const isAmCD = now < autoMergeCD && !isAmActive;
+  const isAgActive = now < autoGenEnd;
+
+  // ─── NAV ITEMS ────────────────────────────────────────────────────────────
+  const navItems: { key: Screen; label: string; emoji: string; bg: string; border: string }[] = [
+    { key: "main",        label: "Home",       emoji: "🏠", bg: "#3a2210", border: "#8b5c2a" },
+    { key: "farm",        label: "Kandang",    emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
+    { key: "dig",         label: "Scratch",    emoji: "🐾", bg: "#1a2a10", border: "#4a7a1a" },
+    { key: "spin",        label: "Spin",       emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
+    { key: "tasks",       label: "Misi",       emoji: "📋", bg: "#3a1a10", border: "#c07820" },
+    { key: "shop",        label: "Shop",       emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
+    { key: "leaderboard", label: "Ranking",    emoji: "🏆", bg: "#1a1a00", border: "#a16207" },
+  ];
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
+  return (
+    <main style={{ minHeight: "100vh", background: "#0a0a1a", color: "#f0e6c8", fontFamily: "system-ui,sans-serif", userSelect: "none" }}>
+      <style>{`
+        @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-60px)} }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+        @keyframes digWiggle { 0%,100%{transform:rotate(-12deg)} 50%{transform:rotate(12deg)} }
+        .gbtn{transition:transform .1s,opacity .1s;cursor:pointer;}
+        .gBtn:active{transform:scale(.93)!important;opacity:.85!important;}
+        .mcell{transition:border-color .12s,transform .1s;}
+        .mcell:active{transform:scale(.9);}
+      `}</style>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
+          background: toast.type === "err" ? "#7f1d1d" : toast.type === "success" ? "#14532d" : "#1e3a5f",
+          color: "#fff", padding: "8px 18px", borderRadius: 20, fontSize: 14,
+          zIndex: 999, whiteSpace: "nowrap", pointerEvents: "none",
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Float numbers */}
+      {floats.map(f => (
+        <div key={f.id} style={{
+          position: "fixed", left: f.x, top: f.y, color: "#fbbf24",
+          fontWeight: 700, fontSize: 18, pointerEvents: "none",
+          animation: "floatUp .9s ease-out forwards", zIndex: 888,
+        }}>
+          {f.text}
+        </div>
+      ))}
+
+      {/* ── TOP BAR ── */}
+      <div style={{ background: "#111126", borderBottom: "1px solid #2d2d5e", padding: "8px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: "#fbbf24" }}>🐓 AYAM PETARUNG</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ fontSize: 13 }}>🥚 <b style={{ color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</b></span>
+          <span style={{ fontSize: 13 }}>🪱 <b style={{ color: "#86efac" }}>{Math.floor(worms)}</b></span>
+          <span style={{ fontSize: 13 }}>🐾 <b style={{ color: "#f97316" }}>{cekers}</b></span>
+          <button onClick={() => { initAudio(); setMusicOn(m => !m); }} style={{ background: "none", border: "1px solid #3d3d6e", borderRadius: 8, color: musicOn ? "#fbbf24" : "#666", fontSize: 15, padding: "3px 7px", cursor: "pointer" }}>
+            {musicOn ? "🔊" : "🔇"}
           </button>
         </div>
+      </div>
 
-        {/* SCOREBAR INDIKATOR */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <div style={topBarItem}>🥚 <span style={{ color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</span></div>
-          <div style={topBarItem}>🪱 <span style={{ color: "#a78bfa" }}>{worms}</span></div>
-          <div style={topBarItem}>🐾 <span style={{ color: "#38bdf8" }}>{scratchers}</span></div>
+      {/* ── YARD (always visible) ── */}
+      <Yard tiers={walkingTiers} />
+
+      {/* ── STAT BAR ── */}
+      <div style={{ background: "#3a2210", padding: "7px 10px", display: "flex", alignItems: "center", gap: 8, borderTop: "2px solid #5a3418", borderBottom: "2px solid #5a3418" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#4a2e10", padding: "3px 10px", borderRadius: 20, border: "1.5px solid #8b5c2a" }}>
+          <span style={{ fontSize: 17 }}>🥚</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</span>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#1a4a1a", padding: "3px 10px", borderRadius: 20, border: "1.5px solid #2d7a1a" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#86efac" }}>{totalIdle.toLocaleString()}/s</span>
+          <span style={{ fontSize: 13 }}>🚀</span>
+        </div>
+        {boostActive && (
+          <div style={{ background: "#b45309", padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fef3c7" }}>⚡ x2</div>
+        )}
+        <div style={{ marginLeft: "auto", background: "#c07820", padding: "3px 9px", borderRadius: 12, border: "1.5px solid #f5c518", fontSize: 10, fontWeight: 700, color: "#fff5cc" }}>
+          🏆 Bronze 1st ▶
+        </div>
+      </div>
 
-        {/* STATUS TIMERS BAR */}
-        {(boostTime > 0 || autoMergeTime > 0 || autoGenTime > 0) && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, background: "#111126", padding: 8, borderRadius: 8, fontSize: 11 }}>
-            {boostTime > 0 && <span style={{ color: "#fbbf24", background: "#78350f", padding: "2px 6px", borderRadius: 4 }}>🚀 Boost 2x: {boostTime}s</span>}
-            {autoMergeTime > 0 && <span style={{ color: "#34d399", background: "#064e3b", padding: "2px 6px", borderRadius: 4 }}>🤖 AutoMerge: {autoMergeTime}s</span>}
-            {autoGenTime > 0 && <span style={{ color: "#60a5fa", background: "#1e3a8a", padding: "2px 6px", borderRadius: 4 }}>🐣 AutoGen: {autoGenTime}s</span>}
+      {/* ── NAV ── */}
+      <div style={{ display: "flex", background: "#1a0e06", borderBottom: "1px solid #3a2210", overflowX: "auto" }}>
+        {navItems.map(n => (
+          <button key={n.key} onClick={() => setScreen(n.key)} style={{
+            flex: "0 0 auto", padding: "8px 12px", background: screen === n.key ? "#2d1a08" : "none",
+            border: "none", color: screen === n.key ? "#fbbf24" : "#a07840",
+            fontWeight: screen === n.key ? 700 : 400, fontSize: 12, cursor: "pointer",
+            borderBottom: screen === n.key ? "2px solid #fbbf24" : "2px solid transparent",
+          }}>
+            {n.emoji} {n.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SCREENS ── */}
+      <div style={{ padding: "14px 12px", maxWidth: 480, margin: "0 auto" }}>
+
+        {/* HOME */}
+        {screen === "main" && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+
+            {/* Stat cards */}
+            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Earn per Detik</div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: "#fbbf24" }}>{totalIdle.toLocaleString()} 🥚</div>
+              </div>
+              <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>Total Telur Dihasilkan</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</div>
+              </div>
+            </div>
+
+            {/* Fitur Otomatis */}
+            <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24", marginBottom: 8 }}>⚡ Fitur Otomatis</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                
+                {/* Auto Merge */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e1e40", padding: "10px", borderRadius: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>🤖 Auto Merge</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>Tiket: <b style={{ color: "#fff" }}>{autoMergeTix}</b></div>
+                  </div>
+                  {isAmActive ? (
+                    <div style={{ fontSize: 11, color: "#86efac", fontWeight: 700 }}>Aktif: {Math.ceil((autoMergeEnd - now)/1000)}s</div>
+                  ) : isAmCD ? (
+                    <div style={{ fontSize: 11, color: "#f87171", fontWeight: 700 }}>Cooldown: {Math.ceil((autoMergeCD - now)/1000)}s</div>
+                  ) : (
+                    <button onClick={triggerAutoMerge} style={{ ...bStyle("#7c3aed", "#6d28d9"), width: "auto", padding: "6px 12px", fontSize: 11 }}>Gunakan</button>
+                  )}
+                </div>
+
+                {/* Auto Gen */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e1e40", padding: "10px", borderRadius: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>🐣 Auto Generate</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>Tiket: <b style={{ color: "#fff" }}>{autoGenTix}</b></div>
+                  </div>
+                  {isAgActive ? (
+                    <div style={{ fontSize: 11, color: "#86efac", fontWeight: 700 }}>Aktif: {Math.ceil((autoGenEnd - now)/1000)}s</div>
+                  ) : (
+                    <button onClick={triggerAutoGen} style={{ ...bStyle("#059669", "#047857"), width: "auto", padding: "6px 12px", fontSize: 11 }}>Gunakan</button>
+                  )}
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 8, textAlign: "center" }}>Beli tiket tambahan menggunakan cacing di Menu Shop 🛒</div>
+            </div>
+
+            {/* Ayam di grid */}
+            <div style={{ width: "100%", background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>🐔 Ayam di Kandang ({chickenCount}/{GRID_SIZE})</div>
+              {chickenCount === 0 ? (
+                <div style={{ fontSize: 12, color: "#6b7280", textAlign: "center" }}>Belum ada ayam — generate dulu!</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {CHICKEN_TIERS.map(t => {
+                    const count = grid.filter(c => c && c.tier === t.tier).length;
+                    if (count === 0) return null;
+                    return (
+                      <div key={t.tier} style={{ background: "#1e1e40", border: `1px solid ${t.rarityColor}55`, borderRadius: 8, padding: "3px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>{t.emoji}</span>
+                        <span style={{ color: t.rarityColor, fontWeight: 700 }}>T{t.tier}</span>
+                        <span style={{ color: "#fff", fontWeight: 800 }}>×{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Generate button */}
+            <button onClick={hatchChicken} style={{
+              width: 150, height: 150, borderRadius: "50%",
+              background: "#111130", border: "4px solid #fbbf24",
+              fontSize: 48, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+              animation: "pulse 2s infinite",
+            }}>
+              <span>🐣</span>
+              <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800 }}>Generate</span>
+            </button>
+            <div style={{ fontSize: 12, color: "#9ca3af" }}>Tap untuk generate ayam manual! ({HATCH_COST}🥚)</div>
+
           </div>
         )}
 
-        {/* REVENUE INDICATOR PASIF */}
-        <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", background: "#111126", padding: "6px 12px", borderRadius: 8 }}>
-          Pendapatan Pasif Kandang: <b style={{ color: "#fbbf24" }}>+{getIncomePerSecond().toLocaleString()}</b> telur/detik
-        </div>
-
-        {/* NAVIGASI BAR MENU - Menghapus menu "Kandang" */}
-        <div style={{ display: "flex", overflowX: "auto", gap: 6, paddingBottom: 4 }}>
-          {(["main", "dig", "spin", "tasks", "shop", "leaderboard"] as Screen[]).map(sc => (
-            <button key={sc} onClick={() => setScreen(sc)} style={{
-              background: screen === sc ? "#fbbf24" : "#111126",
-              color: screen === sc ? "#000" : "#9ca3af",
-              border: screen === sc ? "1px solid #fbbf24" : "1px solid #27274a",
-              padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer", textTransform: "uppercase"
-            }}>
-              {sc === "main" ? "🏠 Home" : sc === "dig" ? "🐾 Scratch" : sc === "spin" ? "🎡 Spin" : sc === "tasks" ? "📋 Misi" : sc === "shop" ? "🛒 Shop" : "🏆 Rank"}
-            </button>
-          ))}
-        </div>
-
-        {/* SCREEN UTAMA - 🏠 HOME MENU */}
-        {screen === "main" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-            {/* PANEL INTERAKSI GENERATE MANUAL */}
-            <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 20, textAlign: "center", position: "relative" }}>
-              <button onClick={triggerMainTap} style={{
-                width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, #fbbf24 0%, #d97706 100%)",
-                border: "4px solid #fff", cursor: "pointer", position: "relative", outline: "none", boxShadow: "0 8px 20px rgba(217,119,6,0.4)",
-                display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2
-              }}>
-                <span style={{ fontSize: 32 }}>🐣</span>
-                <span style={{ color: "#fff", fontWeight: 900, fontSize: 11, textShadow: "1px 1px 2px #000" }}>GENERATE</span>
-              </button>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>Biaya Menetaskan Manual: 30 Telur</div>
-
-              {/* RENDER FLOATING TEXTS */}
-              {floats.map(f => (
-                <span key={f.id} style={{
-                  position: "absolute", left: f.x, top: f.y, color: "#fbbf24", fontWeight: 900, fontSize: 16,
-                  pointerEvents: "none", animation: "fadeOutUp 1s ease forwards"
-                }}>{f.text}</span>
-              ))}
-            </div>
-
-            {/* INTEGRASI FITUR OTOMATIS */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button onClick={handleToggleAutoMergeButton} style={{
-                ...bStyle(autoMergeTime > 0 ? "#059669" : "#1e1e40", "#3d3d6e"),
-                opacity: autoMergeCooldown > 0 && autoMergeTime === 0 ? 0.6 : 1, fontSize: 12
-              }}>
-                {autoMergeTime > 0 ? `🤖 AutoMerge (${autoMergeTime}s)` : autoMergeCooldown > 0 ? `⌛ CD (${autoMergeCooldown}s)` : "🤖 Aktifkan AutoMerge"}
-              </button>
-              <button onClick={() => triggerGenerateChicken(false)} style={{ ...bStyle("#b45309", "#d97706"), fontSize: 12 }}>
-                ➕ Teteskan Langsung (🥚30)
+        {/* FARM */}
+        {screen === "farm" && (
+          <div>
+            <div style={{ marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>Pilih ayam → tap sel lain untuk merge</div>
+              <button onClick={hatchChicken} style={{ ...bStyle("#7c2d12", "#b45309"), fontSize: 12, padding: "6px 12px", width: "auto" }}>
+                +Ayam ({HATCH_COST}🥚)
               </button>
             </div>
 
-            {/* PEMINDAHAN: GRID 15 KOTAK KANDANG KE HOME MENU */}
-            <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#9ca3af", marginBottom: 10, textAlign: "center" }}>
-                🏘️ AREA KANDANG & PENGGABUNGAN AYAM
-              </div>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+            {/* Grid */}
+            <div style={{ background: "#d4a45a", padding: 8, border: "3px solid #8b5c2a", borderRadius: 8, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(139,92,42,.1) 18px,rgba(139,92,42,.1) 19px)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
                 {grid.map((cell, idx) => {
-                  const isSelected = selectedCell === idx;
-                  const dataInfo = cell ? CHICKEN_TIERS[cell.tier] : null;
-
+                  const ti = cell ? getTier(cell.tier) : null;
                   return (
-                    <div key={idx} onClick={() => handleCellClick(idx)} style={{
-                      aspectRatio: "1", background: isSelected ? "#3b82f6" : "#0d0d1f",
-                      border: isSelected ? "2px solid #fff" : "1px solid #27274a", borderRadius: 12,
-                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                      boxShadow: isSelected ? "0 0 10px #3b82f6" : "none"
-                    }}>
-                      {dataInfo ? (
+                    <div
+                      key={idx}
+                      className="mcell"
+                      onClick={() => cellClick(idx)}
+                      style={{
+                        aspectRatio: "1",
+                        background: selectedCell === idx ? "#2d1b69" : cell ? "#e8c880" : "#c8a850",
+                        border: `2px solid ${selectedCell === idx ? "#a78bfa" : ti ? ti.rarityColor + "88" : "#a07030"}`,
+                        borderRadius: 10,
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", position: "relative",
+                        opacity: cell ? 1 : 0.55,
+                      }}
+                    >
+                      {cell && ti ? (
                         <>
-                          <span style={{ fontSize: 24 }}>{dataInfo.emoji}</span>
-                          <span style={{
-                            position: "absolute", bottom: 4, right: 4, background: dataInfo.badgeColor,
-                            color: "#fff", fontSize: 9, fontWeight: 900, padding: "1px 4px", borderRadius: 4
-                          }}>T{dataInfo.tier}</span>
+                          <span style={{ fontSize: 22, lineHeight: 1 }}>{ti.emoji}</span>
+                          <div style={{
+                            position: "absolute", top: 2, right: 2, width: 14, height: 14,
+                            borderRadius: "50%", background: ti.badgeColor,
+                            fontSize: 8, fontWeight: 700, color: "#fff",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>{cell.tier}</div>
                         </>
                       ) : (
-                        <span style={{ color: "#22223b", fontSize: 11, fontWeight: 700 }}>{idx + 1}</span>
+                        <span style={{ fontSize: 16, color: "#a07030", opacity: 0.4 }}>+</span>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <p style={{ fontSize: 11, color: "#6b7280", margin: "8px 0 0 0", textAlign: "center" }}>
-                💡 <i>Pilih ayam bertier sama untuk melakukan evolusi penggabungan (Merge).</i>
-              </p>
             </div>
 
-            {/* PEMINDAHAN: DAFTAR 20 TIER AYAM KE HOME MENU */}
-            <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#9ca3af", marginBottom: 10 }}>📖 REKOR ENSIKLOPEDIA TIER AYAM</div>
-              <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
-                {(Object.values(CHICKEN_TIERS) as ChickenTier[]).map(t => {
-                  const isUnlocked = t.tier <= maxTierUnlocked;
-                  return (
-                    <div key={t.tier} style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      background: isUnlocked ? "#181836" : "#0a0a16", opacity: isUnlocked ? 1 : 0.4,
-                      padding: "6px 10px", borderRadius: 8, border: "1px solid #27274a"
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 18 }}>{isUnlocked ? t.emoji : "❓"}</span>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: isUnlocked ? "#fff" : "#4b5563" }}>
-                            {isUnlocked ? t.name : `Tier ${t.tier} Terkunci`}
-                          </div>
-                          <span style={{ fontSize: 9, color: t.rarityColor, fontWeight: 700 }}>{t.rarity}</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "#fbbf24" }}>+{t.idlePerSec}/s</div>
-                        <div style={{ fontSize: 8, color: "#6b7280" }}>pasif telur</div>
-                      </div>
-                    </div>
-                  );
-                })}
+            {selectedCell !== null && grid[selectedCell] && (
+              <div style={{ marginTop: 10, textAlign: "center", color: "#a78bfa", fontSize: 12 }}>
+                {getTier(grid[selectedCell]!.tier).emoji} {getTier(grid[selectedCell]!.tier).name} dipilih — tap sel lain untuk merge/pindah
+              </div>
+            )}
+
+            {/* Tier table */}
+            <div style={{ marginTop: 12, background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 8 }}>Daftar lengkap 20 Tier Ayam:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {CHICKEN_TIERS.map(t => (
+                  <div key={t.tier} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                    <span style={{ minWidth: 20 }}>{t.emoji}</span>
+                    <span style={{ color: t.rarityColor, flex: 1 }}>{t.name}</span>
+                    <span style={{ color: "#6b7280", fontSize: 10 }}>{t.rarity}</span>
+                    <span style={{ color: "#fbbf24", fontSize: 10 }}>{t.idlePerSec.toLocaleString()}/s</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* SCREEN SCREEN LAINNYA TIDAK BERUBAH SECARA STRUKTUR LOGIKA */}
-
-        {/* SCREEN INTERAKSI SCRATCH PANEL */}
+        {/* SCRATCH */}
         {screen === "dig" && (
-          <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 20, textAlign: "center" }}>
-            <h2 style={{ margin: "0 0 5px 0", fontSize: 15 }}>🐾 GALIAN CEKER BERHADIAH</h2>
-            <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 15px 0" }}>Gunakan tiket ceker ayammu untuk mengeruk hadiah acak di pekarangan.</p>
-            <div style={{ fontSize: 32, margin: "20px 0" }}>⛏️🪱🐾</div>
-            <button onClick={startScratch} style={bStyle("#0284c7", "#0369a1")}>🐾 SCRATCH SEKARANG (Pakai 1 Ceker)</button>
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 10 }}>Sisa Kesempatan Tiket Gali: {scratchers}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 13, color: "#9ca3af", textAlign: "center" }}>
+              Habiskan 1 🐾 per scratch. Dapat telur atau cacing!
+            </div>
+            <div style={{ fontSize: 56, animation: isDigging ? "digWiggle .3s infinite" : "none" }}>🐾</div>
+            <div style={{ fontSize: 40 }}>{isDigging ? "💨" : "🥚"}</div>
+
+            {digResult && !isDigging && (
+              <div style={{ background: "#111130", border: "1px solid #fbbf24", borderRadius: 16, padding: "12px 28px", textAlign: "center" }}>
+                <div style={{ color: "#9ca3af", fontSize: 12 }}>Hasil scratch:</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#fbbf24" }}>{digResult.label}</div>
+              </div>
+            )}
+
+            <button onClick={doDig} disabled={isDigging || cekers < 1} style={{ ...bStyle("#7c2d12", "#b45309"), fontSize: 16, padding: "14px 36px", opacity: isDigging || cekers < 1 ? 0.5 : 1 }}>
+              {isDigging ? "Scratching..." : `🐾 Scratch (1 🐾 Ceker)`}
+            </button>
+            <div style={{ color: "#f97316", fontSize: 13 }}>🐾 Ceker Ayam: {cekers}</div>
           </div>
         )}
 
-        {/* SCREEN INTERAKSI LUCKY SPIN WHEEL */}
+        {/* SPIN */}
         {screen === "spin" && (
-          <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 20, textAlign: "center" }}>
-            <h2 style={{ margin: "0 0 5px 0", fontSize: 15 }}>🎡 RODA BERUNTUNG HARIAN</h2>
-            <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 20px 0" }}>Dapatkan bonus spesial gratis satu kali setiap hari.</p>
-            
-            <div style={{ position: "relative", width: 200, height: 200, margin: "0 auto 20px auto" }}>
-              <div style={{
-                width: "100%", height: "100%", borderRadius: "50%", border: "6px solid #27274a",
-                transform: `rotate(${spinAngle}deg)`, transition: isSpinning ? "transform 3.5s cubic-bezier(0.1, 0.8, 0.1, 1)" : "none",
-                background: "conic-gradient(#3b82f6 0deg 60deg, #10b981 60deg 120deg, #f59e0b 120deg 180deg, #ec4899 180deg 240deg, #8b5cf6 240deg 300deg, #ef4444 300deg 360deg)"
-              }} />
-              <div style={{
-                position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
-                width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "20px solid #fff", zIndex: 10
-              }} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 13, color: "#9ca3af" }}>Spin gratis 1x per hari!</div>
+            <div style={{ position: "relative", width: 240, height: 240 }}>
+              <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", fontSize: 22, zIndex: 2, color: "#fbbf24" }}>▼</div>
+              <svg width="240" height="240" viewBox="0 0 240 240" style={{
+                transform: `rotate(${spinAngle}deg)`,
+                transition: spinning ? "transform 3.2s cubic-bezier(.17,.67,.12,1)" : "none",
+                borderRadius: "50%",
+              }}>
+                {SPIN_REWARDS.map((r, i) => {
+                  const sectors = SPIN_REWARDS.length;
+                  const angle = (2 * Math.PI) / sectors;
+                  const sa = i * angle - Math.PI / 2;
+                  const ea = sa + angle;
+                  const cx = 120, cy = 120, rad = 118;
+                  const x1 = cx + rad * Math.cos(sa), y1 = cy + rad * Math.sin(sa);
+                  const x2 = cx + rad * Math.cos(ea), y2 = cy + rad * Math.sin(ea);
+                  const colors = ["#7c3aed","#1d4ed8","#047857","#b45309","#be185d","#0e7490","#dc2626","#4338ca"];
+                  const mid = sa + angle / 2;
+                  const tx = cx + rad * 0.65 * Math.cos(mid);
+                  const ty = cy + rad * 0.65 * Math.sin(mid);
+                  const rot = (mid * 180 / Math.PI) + 90;
+                  return (
+                    <g key={i}>
+                      <path d={`M${cx},${cy} L${x1},${y1} A${rad},${rad} 0 0,1 ${x2},${y2} Z`}
+                        fill={colors[i % colors.length]} stroke="#0a0a1a" strokeWidth="1.5" />
+                      <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle"
+                        fill="#fff" fontSize="9" fontWeight="700"
+                        transform={`rotate(${rot}, ${tx}, ${ty})`}>{r.label}</text>
+                    </g>
+                  );
+                })}
+                <circle cx="120" cy="120" r="14" fill="#0a0a1a" stroke="#fbbf24" strokeWidth="2" />
+              </svg>
             </div>
-
-            <button onClick={spinWheel} disabled={isSpinning} style={bStyle(isSpinning ? "#4b5563" : "#d97706", "#b45309")}>
-              {isSpinning ? "🎰 BERPUTAR..." : "🎡 SPIN SEKARANG"}
+            {spinResult && !spinning && (
+              <div style={{ background: "#111130", border: "1px solid #fbbf24", borderRadius: 16, padding: "12px 28px", textAlign: "center" }}>
+                <div style={{ color: "#9ca3af", fontSize: 12 }}>Hasilmu:</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#fbbf24" }}>{spinResult.label}</div>
+              </div>
+            )}
+            <button onClick={doSpin} disabled={spinUsedToday || spinning} style={{ ...bStyle("#7c3aed", "#6d28d9"), fontSize: 16, padding: "14px 36px", opacity: spinUsedToday || spinning ? 0.5 : 1 }}>
+              {spinning ? "Berputar..." : spinUsedToday ? "Sudah Spin Hari Ini" : "🎡 SPIN SEKARANG"}
             </button>
           </div>
         )}
 
-        {/* SCREEN DAFTAR MISI TASKS */}
+        {/* TASKS */}
         {screen === "tasks" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-            <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15 }}>
-              <h2 style={{ margin: "0 0 5px 0", fontSize: 14 }}>📅 ABSEN HARIAN BERUNTUN (CHECK-IN)</h2>
-              <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 12px 0" }}>Check-in harian untuk mendapatkan kelipatan 100 telur gratis.</p>
-              <button onClick={claimDailyCheckIn} style={bStyle("#059669", "#065f46")}>📅 Check-in Sekarang</button>
-              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>Rangkaian Streak Absen Anda: {checkInStreak} Hari</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24", marginBottom: 2 }}>📅 Check-in Harian</div>
+            <div style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 14, padding: 14 }}>
+              <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+                {CHECKIN_REWARDS.map((r, i) => (
+                  <div key={i} style={{
+                    flex: "0 0 auto",
+                    background: i < checkinDay ? "#1e3a5f" : i === checkinDay && checkinDate === todayStr() ? "#14532d" : "#1e1e40",
+                    border: "1px solid #3d3d6e", borderRadius: 8, padding: "5px 7px", textAlign: "center", fontSize: 10, minWidth: 42,
+                  }}>
+                    <div style={{ color: "#9ca3af" }}>H{i + 1}</div>
+                    <div style={{ color: "#fbbf24", fontWeight: 700 }}>{r}🥚</div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={doCheckin} style={bStyle("#14532d", "#166534")}>
+                {checkinDate === todayStr() ? "✅ Sudah Check-in" : "📅 Check-in Sekarang"}
+              </button>
             </div>
 
-            <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15 }}>
-              <h2 style={{ margin: "0 0 10px 0", fontSize: 14 }}>📋 DAFTAR TUGAS PETARUNG HARIAN</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {TASKS_DEFS.map(t => {
-                  const prog = taskProgress[t.id] || 0;
-                  const isDone = prog >= t.target;
-                  const isClaimed = taskClaimed[t.id];
-
-                  return (
-                    <div key={t.id} style={{ background: "#181836", padding: 12, borderRadius: 10, border: "1px solid #27274a" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-                        <span>{t.label}</span>
-                        <span style={{ color: isDone ? "#10b981" : "#ef4444" }}>{Math.floor(prog)} / {t.target}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: "#9ca3af" }}>Hadiah: 🥚{t.rewardEggs} | 🪱{t.rewardWorms}</span>
-                        <button onClick={() => claimTask(t.id)} disabled={!isDone || isClaimed} style={{
-                          background: isClaimed ? "#4b5563" : isDone ? "#10b981" : "#1f1f42",
-                          border: "none", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 800, cursor: isDone && !isClaimed ? "pointer" : "default"
-                        }}>
-                          {isClaimed ? "✓ DIAMBIL" : isDone ? "KLAIM" : "BELUM SELESAI"}
-                        </button>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24", marginTop: 4 }}>📋 Misi Harian</div>
+            {DAILY_TASKS.map(task => {
+              const prog    = taskProgress[task.id] || 0;
+              const done    = prog >= task.target;
+              const claimed = taskClaimed[task.id] || false;
+              return (
+                <div key={task.id} style={{ background: "#111130", border: `1px solid ${claimed ? "#14532d" : "#2d2d5e"}`, borderRadius: 14, padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{task.label}</div>
+                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                        +{task.rewardEggs}🥚 {task.rewardWorms > 0 ? `+${task.rewardWorms}🪱` : ""}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <button onClick={() => claimTask(task)} disabled={!done || claimed} style={{ ...bStyle("#14532d", "#166534"), fontSize: 12, padding: "6px 12px", width: "auto", opacity: !done || claimed ? 0.5 : 1 }}>
+                      {claimed ? "✅" : done ? "Klaim!" : `${Math.min(prog, task.target)}/${task.target}`}
+                    </button>
+                  </div>
+                  <div style={{ width: "100%", background: "#1e1e40", borderRadius: 6, height: 6, marginTop: 10 }}>
+                    <div style={{ width: `${Math.min(100, (prog / task.target) * 100)}%`, background: "#fbbf24", borderRadius: 6, height: 6, transition: "width .3s" }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* SCREEN INTERAKSI SHOP PENUKARAN VOUCHER */}
+        {/* SHOP */}
         {screen === "shop" && (
-          <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15 }}>
-            <h2 style={{ margin: "0 0 12px 0", fontSize: 14, textAlign: "center" }}>🛒 TOKO PENUKARAN & BOOST PETARUNG</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181836", padding: 10, borderRadius: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>🤖 Tiket Otomasi Gabung (Auto-Merge)</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Menggabungkan ayam secara otomatis selama 1 menit</div>
-                </div>
-                <button onClick={() => buyShopItem("auto_merge", 5, 0)} style={{ ...bStyle("#7c3aed", "#6d28d9"), padding: "6px 12px", fontSize: 11 }}>🪱 5 Cacing</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24", marginBottom: 2 }}>🛒 Toko</div>
+            {[
+              {
+                title: "🎫 Beli Tiket Auto-Merge",
+                desc: "1 Tiket: Auto-Merge aktif selama 1 menit (Cooldown 30d)",
+                cost: `${AUTO_TICKET_COST}🪱`,
+                action: buyAutoMergeTix,
+                bg: "#7c3aed", bg2: "#6d28d9",
+              },
+              {
+                title: "🎫 Beli Tiket Auto-Generate",
+                desc: "1 Tiket: Spawn ayam otomatis selama 1 menit (jika telur cukup)",
+                cost: `${AUTO_TICKET_COST}🪱`,
+                action: buyAutoGenTix,
+                bg: "#059669", bg2: "#047857",
+              },
+              {
+                title: "⚡ Boost x2 — 5 Menit",
+                desc: `Semua income ×2 selama 5 menit\nSisa: ${boostActive ? `${Math.ceil((boostEndTime - Date.now()) / 1000)}s` : "—"}`,
+                cost: `${BOOST_COST_WORMS}🪱`,
+                action: buyBoost,
+                bg: "#b45309", bg2: "#92400e",
+              },
+              {
+                title: "🪱 Beli 5 Cacing",
+                desc: "Beli stok cacing untuk tiket/boost",
+                cost: `${WORM_COST}🥚`,
+                action: buyWorms,
+                bg: "#065f46", bg2: "#047857",
+              },
+              {
+                title: "🐾 Beli 3 Ceker Ayam",
+                desc: "Digunakan di menu Scratch untuk gali telur/cacing",
+                cost: `${SHOVEL_COST_EGGS}🥚`,
+                action: buyCekers,
+                bg: "#7c2d12", bg2: "#b45309",
+              },
+            ].map((item, i) => (
+              <div key={i} style={{ background: "#111130", border: "1px solid #2d2d5e", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, whiteSpace: "pre-line" }}>{item.desc}</div>
+                <button onClick={item.action} style={{ ...bStyle(item.bg, item.bg2) }}>
+                  Beli — {item.cost}
+                </button>
               </div>
+            ))}
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181836", padding: 10, borderRadius: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>🐣 Tiket Otomasi Tetes (Auto-Gen)</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Menetaskan ayam lapis 1 otomatis tiap detik selama 1 menit</div>
-                </div>
-                <button onClick={() => buyShopItem("auto_gen", 5, 0)} style={{ ...bStyle("#7c3aed", "#6d28d9"), padding: "6px 12px", fontSize: 11 }}>🪱 5 Cacing</button>
+            <div style={{ background: "#111130", border: "1px solid #1e3a5f", borderRadius: 14, padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📊 Statistik</div>
+              <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 2.2 }}>
+                Total generate ayam: <b style={{ color: "#fbbf24" }}>{taps.toLocaleString()}</b><br />
+                Total telur diperoleh: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</b><br />
+                Ayam di kandang: <b style={{ color: "#fbbf24" }}>{chickenCount}</b><br />
+                Tier tertinggi: <b style={{ color: "#fbbf24" }}>{maxTierInGrid > 0 ? `${getTier(maxTierInGrid as TierId).emoji} ${getTier(maxTierInGrid as TierId).name}` : "—"}</b><br />
+                Ceker ayam: <b style={{ color: "#f97316" }}>{cekers} 🐾</b>
               </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181836", padding: 10, borderRadius: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>🚀 Booster Pendapatan Ganda x2</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Menggandakan perolehan pasif telur selama 5 menit penuh</div>
-                </div>
-                <button onClick={() => buyShopItem("boost_2x", 10, 0)} style={{ ...bStyle("#7c3aed", "#6d28d9"), padding: "6px 12px", fontSize: 11 }}>🪱 10 Cacing</button>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181836", padding: 10, borderRadius: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>📦 Paket Suplemen 5 Cacing</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Tukarkan hasil telur terkumpul dengan cacing premium</div>
-                </div>
-                <button onClick={() => buyShopItem("buy_worms", 0, 40)} style={{ ...bStyle("#059669", "#065f46"), padding: "6px 12px", fontSize: 11 }}>🥚 40 Telur</button>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#181836", padding: 10, borderRadius: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>🐾 Pasokan Alat Gali 3 Ceker Ayam</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>Mendapatkan tiket ekstra untuk menu gali keberuntungan</div>
-                </div>
-                <button onClick={() => buyShopItem("buy_scratchers", 0, 40)} style={{ ...bStyle("#059669", "#065f46"), padding: "6px 12px", fontSize: 11 }}>🥚 40 Telur</button>
-              </div>
-
             </div>
           </div>
         )}
 
-        {/* SCREEN INTERAKSI LEADERBOARD RANKING */}
+        {/* LEADERBOARD */}
         {screen === "leaderboard" && (
-          <div style={{ background: "#111126", borderRadius: 16, border: "1px solid #27274a", padding: 15, display: "flex", flexDirection: "column", gap: 15 }}>
-            <h2 style={{ margin: 0, fontSize: 14, textAlign: "center" }}>🏆 PERINGKAT SKOR PETARUNG LOKAL</h2>
-            
-            <div style={{ display: "flex", gap: 6 }}>
-              <input type="text" placeholder="Masukkan nama..." value={playerName} onChange={e => setPlayerName(e.target.value)} style={{
-                flex: 1, background: "#0a0a16", border: "1px solid #27274a", borderRadius: 8, padding: "8px 12px", color: "#fff", fontSize: 12
-              }} />
-              <button onClick={saveToLeaderboard} style={{ ...bStyle("#fbbf24", "#d97706"), color: "#000", padding: "8px 14px", fontSize: 12 }}>💾 Simpan</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#fbbf24" }}>🏆 Leaderboard Pemain</div>
+
+            {/* Submit score card */}
+            <div style={{ background: "#111130", border: "1px solid #a16207", borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 13, color: "#d1d5db", marginBottom: 8, fontWeight: 600 }}>
+                {playerName ? `👤 Pemain: ${playerName}` : "Masukkan namamu dan simpan skor"}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  placeholder={playerName || "Nama pemain..."}
+                  maxLength={20}
+                  style={{
+                    flex: 1, background: "#1e1e40", border: "1px solid #3d3d6e",
+                    borderRadius: 8, color: "#f0e6c8", padding: "8px 10px", fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+                <button onClick={submitScore} style={{ ...bStyle("#a16207", "#d97706"), width: "auto", padding: "8px 16px", whiteSpace: "nowrap" }}>
+                  💾 Simpan
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: "#6b7280" }}>
+                Skormu sekarang: <b style={{ color: "#fbbf24" }}>{Math.floor(totalEarned).toLocaleString()} 🥚</b>
+                {maxTierInGrid > 0 && <span>  |  Tier maks: <b style={{ color: getTier(maxTierInGrid as TierId).rarityColor }}>{getTier(maxTierInGrid as TierId).emoji} {getTier(maxTierInGrid as TierId).name}</b></span>}
+              </div>
             </div>
 
-            <div style={{ background: "#0a0a16", borderRadius: 10, border: "1px solid #27274a", padding: 10 }}>
+            {/* Leaderboard table */}
+            <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 14, padding: 14 }}>
               {leaderboard.length === 0 ? (
-                <div style={{ textAlign: "center", fontSize: 11, color: "#6b7280", padding: "10px 0" }}>Belum ada data skor yang terekam.</div>
+                <div style={{ textAlign: "center", color: "#6b7280", fontSize: 13, padding: "20px 0" }}>
+                  Belum ada pemain terdaftar.<br />Simpan skormu untuk masuk ranking!
+                </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {leaderboard.map((entry, index) => {
-                    const tier = CHICKEN_TIERS[entry.maxTier as TierId];
+                  {leaderboard.map((entry, i) => {
+                    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                    const isMe  = entry.name === playerName;
+                    const tier  = entry.maxTier > 0 ? getTier(entry.maxTier as TierId) : null;
                     return (
-                      <div key={index} style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        background: "#111126", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e1e40"
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        background: isMe ? "#1e2a10" : "#0e0e28",
+                        border: `1px solid ${isMe ? "#4a7a1a" : "#1e1e40"}`,
+                        borderRadius: 10, padding: "8px 10px",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 12, fontWeight: 900, color: index === 0 ? "#fbbf24" : index === 1 ? "#9ca3af" : index === 2 ? "#b45309" : "#fff" }}>
-                            #{index + 1}
-                          </span>
-                          <div>
-                            <div style={{ fontSize: 12, fontWeight: 800 }}>{entry.name}</div>
-                            <div style={{ fontSize: 10, color: "#6b7280" }}>{entry.date}</div>
+                        <span style={{ fontSize: 16, minWidth: 28, textAlign: "center" }}>{medal}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: isMe ? "#86efac" : "#f0e6c8" }}>
+                            {entry.name}{isMe && " (Kamu)"}
                           </div>
-                          {tier && (
-                            <span style={{ fontSize: 11, color: tier.rarityColor, background: "#1e1e40", padding: "2px 6px", borderRadius: 6 }}>
-                              {tier.emoji} T{entry.maxTier}
-                            </span>
-                          )}
+                          <div style={{ fontSize: 10, color: "#6b7280" }}>{entry.date}</div>
                         </div>
+                        {tier && (
+                          <span style={{ fontSize: 11, color: tier.rarityColor, background: "#1e1e40", padding: "2px 6px", borderRadius: 6 }}>
+                            {tier.emoji} T{entry.maxTier}
+                          </span>
+                        )}
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontWeight: 800, fontSize: 13, color: "#fbbf24" }}>{entry.eggs.toLocaleString()}</div>
                           <div style={{ fontSize: 9, color: "#6b7280" }}>🥚 telur</div>
@@ -912,18 +1305,30 @@ export default function GamePage() {
               )}
             </div>
 
-            {/* Tombol Reset Leaderboard telah dihapus sesuai instruksi Anda */}
+            {leaderboard.length > 0 && (
+              <button onClick={clearLeaderboard} style={{ ...bStyle("#1e1e40", "#3d3d6e"), fontSize: 12 }}>
+                🗑️ Reset Leaderboard
+              </button>
+            )}
           </div>
         )}
 
       </div>
-      {/* GLOBAL KEYFRAME CSS ANIMATION UNTUK FLUIDITAS */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeOutUp {
-          0% { opacity: 1; transform: translateY(0); }
-          100% { opacity: 0; transform: translateY(-40px); }
-        }
-      `}} />
     </main>
   );
+}
+
+// ─── STYLE HELPER ─────────────────────────────────────────────────────────────
+function bStyle(bg: string, border: string): React.CSSProperties {
+  return {
+    background: bg,
+    border: `1px solid ${border}`,
+    color: "#fff",
+    borderRadius: 10,
+    padding: "10px 18px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    width: "100%",
+  };
 }
