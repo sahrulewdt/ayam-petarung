@@ -1954,7 +1954,7 @@ export default function Home() {
             <div style={{ background:"#0a2a1a",border:"1px solid #065f46",borderRadius:14,padding:12 }}>
               <div style={{ fontSize:12,fontWeight:700,color:"#34d399",marginBottom:8 }}>🔮 Kombinasi Langka</div>
               <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                {Object.entries(BREED_COMBOS).filter(([k])=>!k.split("+").reverse().join("+")!==k).map(([combo,result])=>{
+                {Object.entries(BREED_COMBOS).filter(([k])=>k.split("+").reverse().join("+")===k).map(([combo,result])=>{
                   const [a,b]=combo.split("+") as [Element,Element];
                   return(
                     <div key={combo} style={{ display:"flex",alignItems:"center",gap:6,fontSize:11,
