@@ -509,10 +509,22 @@ function BattleArena({
   const monsterLowHp = monsterHpPercent < 35;
 
   return (
-    <div className="game-arena" aria-label="Battle arena">
+    <div className={`game-arena ${monster.boss ? "boss-arena" : "field-arena"}`} aria-label="Battle arena">
+      <div className="arena-backdrop">
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="arena-sky" />
+      <div className="arena-portal-ring" />
       <div className="arena-rain arena-rain-one" />
       <div className="arena-rain arena-rain-two" />
+      <div className="arena-motes">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="arena-floor">
         <span />
         <span />
@@ -528,6 +540,12 @@ function BattleArena({
         </div>
         <div className="name-plate">{character?.name ?? "Hero"}</div>
       </div>
+
+      {character && (
+        <div className="pet-sprite">
+          <span />
+        </div>
+      )}
 
       <div className={`monster-sprite monster-${enemy.scale} ${fx?.kind === "slash" || fx?.kind === "skill" ? "monster-hit" : ""} ${fx?.kind === "hit" ? "monster-attacking" : ""} ${monsterLowHp ? "sprite-danger" : ""}`}>
         <div className="sprite-shadow" />
@@ -553,6 +571,47 @@ function BattleArena({
       )}
 
       {statusLabel && <div className="battle-status">{statusLabel}</div>}
+    </div>
+  );
+}
+
+function CharacterShowcase({
+  className,
+  name,
+  title,
+}: {
+  className: HeroClass;
+  name: string;
+  title: string;
+}) {
+  const hero = classVisual(className);
+
+  return (
+    <div className="character-showcase" aria-label="Character visual preview">
+      <div className="showcase-sky" />
+      <div className="showcase-city">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="showcase-portal" />
+      <div className="showcase-ground" />
+      <div className="showcase-hero">
+        <div className="sprite-shadow" />
+        <div className="hero-aura" style={{ background: hero.color }} />
+        <div className="hero-body" style={{ background: hero.color }}>
+          <span className="hero-head" />
+          <span className={`hero-weapon hero-${hero.weapon}`} style={{ borderColor: hero.accent, background: hero.accent }} />
+        </div>
+        <div className="name-plate">{name}</div>
+      </div>
+      <div className="showcase-companion">
+        <span />
+      </div>
+      <div className="showcase-title">
+        <b>{title}</b>
+        <span>Saint Haven Outskirts</span>
+      </div>
     </div>
   );
 }
@@ -1021,6 +1080,11 @@ export default function DragonNestCharacterRpg() {
           <h1 style={{ margin: "4px 0", fontSize: 26, lineHeight: 1.05 }}>Choose Your Class</h1>
           <div style={{ color: "#dbeafe", fontSize: 13 }}>Create your hero, then start from Saint Haven.</div>
         </div>
+        <CharacterShowcase
+          className={selectedClass}
+          name={nameInput.trim() || selectedClass}
+          title={`${selectedGender} ${selectedClass}`}
+        />
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
           <input value={nameInput} onChange={(event) => setNameInput(event.target.value)} placeholder="Character name" style={inputStyle} />
           <div style={classGrid}>
@@ -1055,6 +1119,12 @@ export default function DragonNestCharacterRpg() {
           </div>
           <div style={{ fontSize: 52, lineHeight: 1 }}>{character.class === "Archer" ? "🏹" : character.class === "Sorceress" ? "🔮" : character.class === "Cleric" ? "🛡️" : "🗡️"}</div>
         </section>
+
+        <CharacterShowcase
+          className={character.class}
+          name={character.name}
+          title={`Lv ${character.level} ${character.job}`}
+        />
 
         <section style={gridThree}>
           <StatPill label="Gold" value={`🪙 ${compactNumber(gold)}`} />
@@ -1118,7 +1188,10 @@ export default function DragonNestCharacterRpg() {
         <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 10 }}>Pilih stage, lalu monster akan muncul satu per satu di arena.</div>
         <div style={{ display: "grid", gap: 10 }}>
           {dungeonStages.map((stage) => (
-            <div key={`${stage.chapter}-${stage.stage}`} style={rowCard}>
+            <div key={`${stage.chapter}-${stage.stage}`} className={`stage-card ${stage.bossStage ? "stage-boss" : ""}`} style={rowCard}>
+              <div className="stage-orb">
+                <span>{stage.bossStage ? "🐲" : "⚔️"}</span>
+              </div>
               <div>
                 <div style={{ color: stage.bossStage ? "#fbbf24" : "#f8fafc", fontWeight: 900 }}>Chapter {stage.chapter}: {stage.name}</div>
                 <div style={{ color: "#94a3b8", fontSize: 12 }}>{stage.area} • Req {compactNumber(stage.requiredPower)} Power • Energy {DUNGEON_ENERGY_COST}</div>
@@ -1186,7 +1259,10 @@ export default function DragonNestCharacterRpg() {
         <div style={sectionTitle}>Nest Board</div>
         <div style={{ display: "grid", gap: 10 }}>
           {nestRaids.map((raid) => (
-            <div key={raid.name} style={rowCard}>
+            <div key={raid.name} className="nest-card" style={rowCard}>
+              <div className="stage-orb nest-orb">
+                <span>🐉</span>
+              </div>
               <div>
                 <div style={{ color: "#f8fafc", fontWeight: 900 }}>{raid.name}</div>
                 <div style={{ color: "#94a3b8", fontSize: 12 }}>Boss {raid.boss.name} • HP {compactNumber(raid.boss.hp)} • Energy {NEST_ENERGY_COST}</div>
