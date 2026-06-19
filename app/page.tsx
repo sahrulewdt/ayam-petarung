@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
-type TierId = 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20;
+type TierId = 1|2|3|4|5|6;
 type Element = "Api"|"Air"|"Petir"|"Tanah"|"Angin";
-type NFTRarity = "Common"|"Rare"|"Epic"|"Legendary";
+type NFTRarity = "Common"|"Rare"|"Epic"|"Legendary"|"Mythic"|"Divine";
 type EquipmentType = "Armor"|"Cakar"|"Sayap"|"Helm";
 type SeasonRank = "Bronze"|"Silver"|"Gold"|"Diamond"|"Master"|"Grandmaster"|"Mythic";
-type Screen = "home"|"farm"|"arena"|"clan"|"market"|"breed"|"boss";
+type Screen = "home"|"farm"|"arena"|"clan"|"market"|"breed"|"boss"|"heroes"|"growth";
 
 interface ChickenTier {
   tier: TierId; name: string; emoji: string;
@@ -39,30 +39,75 @@ interface MarketListing {
   price: number; listedAt: string;
 }
 interface PvPDefense { nftIds: number[]; wins: number; losses: number; }
+interface Hero { key: string; name: string; emoji: string; element: Element; rarity: NFTRarity; archetype: string; }
+interface DailyLoginState { streak: number; lastClaim: string; claimedDays: number[]; }
+interface ReferralState { code: string; invited: number; claimedMilestones: number[]; }
+interface DailyReward { day: number; eggs: number; goldenEgg: number; guaranteed?: NFTRarity; label: string; }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
+// 6 clean rarity tiers (replaces the old 20-tier grind — clearer progression, less clutter)
 const CHICKEN_TIERS: ChickenTier[] = [
-  { tier:1,  name:"Kampung",          emoji:"🐣", rarity:"Bibit",        rarityColor:"#9ca3af", badgeColor:"#6b7280",  idlePerSec:0.1      },
-  { tier:2,  name:"Sentul",           emoji:"🐥", rarity:"Tangguh",      rarityColor:"#4ade80", badgeColor:"#16a34a",  idlePerSec:0.3      },
-  { tier:3,  name:"Kedu",             emoji:"🐔", rarity:"Pilihan",      rarityColor:"#60a5fa", badgeColor:"#2563eb",  idlePerSec:0.8      },
-  { tier:4,  name:"Ciparage",         emoji:"🦆", rarity:"Unggul",       rarityColor:"#a78bfa", badgeColor:"#7c3aed",  idlePerSec:2.0      },
-  { tier:5,  name:"Gaok",             emoji:"🦅", rarity:"Petarung",     rarityColor:"#f472b6", badgeColor:"#be185d",  idlePerSec:5.0      },
-  { tier:6,  name:"Pelung",           emoji:"🦚", rarity:"Jawara",       rarityColor:"#fb923c", badgeColor:"#c2410c",  idlePerSec:12.0     },
-  { tier:7,  name:"Bekisar",          emoji:"🦜", rarity:"Jagoan",       rarityColor:"#34d399", badgeColor:"#047857",  idlePerSec:28.0     },
-  { tier:8,  name:"Bangkok",          emoji:"🐉", rarity:"Champion",     rarityColor:"#f87171", badgeColor:"#b91c1c",  idlePerSec:65.0     },
-  { tier:9,  name:"Birma",            emoji:"🌟", rarity:"Elite",        rarityColor:"#fde047", badgeColor:"#a16207",  idlePerSec:150.0    },
-  { tier:10, name:"Saigon",           emoji:"⚫", rarity:"Master",       rarityColor:"#c084fc", badgeColor:"#7e22ce",  idlePerSec:350.0    },
-  { tier:11, name:"Wangkas",          emoji:"🔥", rarity:"Raja Arena",   rarityColor:"#ff4500", badgeColor:"#cc3700",  idlePerSec:800.0    },
-  { tier:12, name:"Pama",             emoji:"⚔️", rarity:"Panglima",     rarityColor:"#00ced1", badgeColor:"#008b8b",  idlePerSec:1800.0   },
-  { tier:13, name:"Magon",            emoji:"🛡️", rarity:"Legenda",      rarityColor:"#ffd700", badgeColor:"#b8860b",  idlePerSec:4000.0   },
-  { tier:14, name:"Bagon",            emoji:"👹", rarity:"Mythic",       rarityColor:"#8a2be2", badgeColor:"#4b0082",  idlePerSec:9000.0   },
-  { tier:15, name:"Kelso",            emoji:"⚡", rarity:"Ancient",      rarityColor:"#00ff7f", badgeColor:"#006400",  idlePerSec:20000.0  },
-  { tier:16, name:"Roundhead",        emoji:"🌪️", rarity:"Immortal",     rarityColor:"#1e90ff", badgeColor:"#0000cd",  idlePerSec:45000.0  },
-  { tier:17, name:"Hatch",            emoji:"🌋", rarity:"Titan",        rarityColor:"#ff1493", badgeColor:"#c71585",  idlePerSec:100000.0 },
-  { tier:18, name:"Shamo",            emoji:"👁️", rarity:"Divine",       rarityColor:"#fffafa", badgeColor:"#696969",  idlePerSec:250000.0 },
-  { tier:19, name:"Cemani",           emoji:"🌑", rarity:"Sang Sakti",   rarityColor:"#a78bfa", badgeColor:"#2f4f4f",  idlePerSec:600000.0 },
-  { tier:20, name:"Ayam Dewa Nusantara",emoji:"👑",rarity:"Dewa Nusantara",rarityColor:"#ff00ff",badgeColor:"#8b008b",idlePerSec:1500000.0},
+  { tier:1, name:"Common",    emoji:"🐣", rarity:"Common",    rarityColor:"#9ca3af", badgeColor:"#6b7280", idlePerSec:0.2    },
+  { tier:2, name:"Rare",      emoji:"🐥", rarity:"Rare",      rarityColor:"#60a5fa", badgeColor:"#2563eb", idlePerSec:1.5   },
+  { tier:3, name:"Epic",      emoji:"🐔", rarity:"Epic",      rarityColor:"#a78bfa", badgeColor:"#7c3aed", idlePerSec:9.0   },
+  { tier:4, name:"Legendary", emoji:"🔥", rarity:"Legendary", rarityColor:"#fbbf24", badgeColor:"#b45309", idlePerSec:55.0  },
+  { tier:5, name:"Mythic",    emoji:"🐉", rarity:"Mythic",    rarityColor:"#8a2be2", badgeColor:"#4b0082", idlePerSec:320.0 },
+  { tier:6, name:"Divine",    emoji:"👑", rarity:"Divine",    rarityColor:"#ff00ff", badgeColor:"#8b008b", idlePerSec:1800.0},
 ];
+
+// ─── HERO COLLECTION: 100 unique Hero Ayam (20 archetypes × 5 elements) ───────
+const HERO_ARCHETYPES: { name:string; emoji:string; rarity:NFTRarity }[] = [
+  // Common (5)
+  { name:"Kampung",  emoji:"🐣", rarity:"Common" },
+  { name:"Sentul",   emoji:"🐥", rarity:"Common" },
+  { name:"Kedu",     emoji:"🐔", rarity:"Common" },
+  { name:"Pelung",   emoji:"🦚", rarity:"Common" },
+  { name:"Bangkok",  emoji:"🐓", rarity:"Common" },
+  // Rare (5)
+  { name:"Bekisar",  emoji:"🦜", rarity:"Rare" },
+  { name:"Birma",    emoji:"🌟", rarity:"Rare" },
+  { name:"Saigon",   emoji:"⚫", rarity:"Rare" },
+  { name:"Wangkas",  emoji:"🦅", rarity:"Rare" },
+  { name:"Pama",     emoji:"🦢", rarity:"Rare" },
+  // Epic (4)
+  { name:"Magon",     emoji:"⚔️", rarity:"Epic" },
+  { name:"Bagon",     emoji:"👹", rarity:"Epic" },
+  { name:"Kelso",     emoji:"🛡️", rarity:"Epic" },
+  { name:"Roundhead", emoji:"🌪️", rarity:"Epic" },
+  // Legendary (3)
+  { name:"Hatch",   emoji:"🌋", rarity:"Legendary" },
+  { name:"Shamo",   emoji:"👁️", rarity:"Legendary" },
+  { name:"Cemani",  emoji:"🌑", rarity:"Legendary" },
+  // Mythic (2)
+  { name:"Garuda",  emoji:"🦅", rarity:"Mythic" },
+  { name:"Phoenix", emoji:"🔥", rarity:"Mythic" },
+  // Divine (1)
+  { name:"Dewa Nusantara", emoji:"👑", rarity:"Divine" },
+];
+
+const ELEMENTS: Element[] = ["Api","Air","Petir","Tanah","Angin"];
+function generateHeroes():Hero[] {
+  const heroes:Hero[]=[];
+  for(const arch of HERO_ARCHETYPES){
+    for(const el of ELEMENTS){
+      heroes.push({
+        key:`${arch.name}-${el}`,
+        name:`${arch.name} ${el}`,
+        emoji:arch.emoji,
+        element:el,
+        rarity:arch.rarity,
+        archetype:arch.name,
+      });
+    }
+  }
+  return heroes;
+}
+const HEROES:Hero[] = generateHeroes(); // 20 archetypes × 5 elements = 100 unique heroes
+function heroesByRarity(r:NFTRarity):Hero[] { return HEROES.filter(h=>h.rarity===r); }
+function pickRandomHero(r:NFTRarity):Hero {
+  const pool=heroesByRarity(r);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 
 const GRID_SIZE = 15;
 const HATCH_COST = 30;
@@ -71,7 +116,6 @@ const BREED_EGG_COST = 80000;
 const BREED_TOKEN_COST = 8;
 const NFT_MINT_COST = 5000;
 
-const ELEMENTS: Element[] = ["Api","Air","Petir","Tanah","Angin"];
 const ELEMENT_EMOJI: Record<Element,string> = { Api:"🔥",Air:"💧",Petir:"⚡",Tanah:"🌍",Angin:"🌪️" };
 const ELEMENT_COLOR: Record<Element,string> = { Api:"#ef4444",Air:"#60a5fa",Petir:"#facc15",Tanah:"#a37c3a",Angin:"#86efac" };
 const ELEMENT_COUNTER: Record<Element,Element> = { Api:"Angin",Angin:"Tanah",Tanah:"Petir",Petir:"Air",Air:"Api" };
@@ -91,13 +135,15 @@ const BREED_COMBOS: Record<string,{ name:string; emoji:string; bonus:string }> =
 };
 
 const NFT_RARITY_COLOR: Record<NFTRarity,string> = {
-  Common:"#9ca3af", Rare:"#60a5fa", Epic:"#a78bfa", Legendary:"#fbbf24",
+  Common:"#9ca3af", Rare:"#60a5fa", Epic:"#a78bfa", Legendary:"#fbbf24", Mythic:"#8a2be2", Divine:"#ff00ff",
 };
 const NFT_RARITY_PROB = [
-  { rarity:"Common" as NFTRarity, prob:60 },
-  { rarity:"Rare"   as NFTRarity, prob:25 },
-  { rarity:"Epic"   as NFTRarity, prob:10 },
-  { rarity:"Legendary" as NFTRarity, prob:5 },
+  { rarity:"Common" as NFTRarity, prob:48 },
+  { rarity:"Rare"   as NFTRarity, prob:27 },
+  { rarity:"Epic"   as NFTRarity, prob:15 },
+  { rarity:"Legendary" as NFTRarity, prob:7 },
+  { rarity:"Mythic" as NFTRarity, prob:2.5 },
+  { rarity:"Divine" as NFTRarity, prob:0.5 },
 ];
 
 const SEASONAL_RANKS: { rank:SeasonRank; emoji:string; minPts:number; color:string; reward:string }[] = [
@@ -145,6 +191,41 @@ const MOCK_PVP_OPPONENTS = [
 ];
 
 const SAVE_KEY  = "ayam-petarung-v5";
+
+// ─── DAILY LOGIN (30-day cycle) ────────────────────────────────────────────────
+function buildDailyRewards():DailyReward[] {
+  const rewards:DailyReward[]=[];
+  for(let d=1;d<=30;d++){
+    if(d===1)        rewards.push({day:d,eggs:100, goldenEgg:0,                 label:"100 🥚"});
+    else if(d===7)   rewards.push({day:d,eggs:300, goldenEgg:2, guaranteed:"Epic",     label:"Epic Egg 🥚✨"});
+    else if(d===30)  rewards.push({day:d,eggs:5000,goldenEgg:5, guaranteed:"Legendary",label:"Legendary Egg 🥚✨"});
+    else if(d%5===0) rewards.push({day:d,eggs:100+d*25,goldenEgg:1,             label:`${fmtNum(100+d*25)} 🥚 + 1 🥚✨`});
+    else             rewards.push({day:d,eggs:100+d*20,goldenEgg:0,             label:`${fmtNum(100+d*20)} 🥚`});
+  }
+  return rewards;
+}
+const DAILY_REWARDS:DailyReward[]=buildDailyRewards();
+
+// ─── REFERRAL VIRAL LOOP ────────────────────────────────────────────────────────
+const REFERRAL_MILESTONES:{ count:number; goldenEgg:number; heroRarity:NFTRarity; label:string }[] = [
+  { count:1,  goldenEgg:1,  heroRarity:"Common",    label:"Undang 1 teman → 1 Pet 🐣"        },
+  { count:5,  goldenEgg:3,  heroRarity:"Rare",       label:"Undang 5 teman → Rare Egg 🥚✨"    },
+  { count:25, goldenEgg:10, heroRarity:"Legendary",  label:"Undang 25 teman → Legendary Pet 👑"},
+];
+function genReferralCode(name:string):string {
+  const base=name.trim().slice(0,5).toUpperCase().replace(/[^A-Z0-9]/g,"")||"AYAM";
+  return `${base}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
+}
+
+// ─── EGG GACHA (4-tier, classic Telegram-style loot odds) ─────────────────────
+const GACHA_PROB = [
+  { rarity:"Common"    as NFTRarity, prob:70 },
+  { rarity:"Rare"      as NFTRarity, prob:20 },
+  { rarity:"Epic"      as NFTRarity, prob:8  },
+  { rarity:"Legendary" as NFTRarity, prob:2  },
+];
+const GACHA_COST_GOLDEN_EGG=1;
+const GOLDEN_EGG_BUY_RATE=600; // eggs per 1 golden egg
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function weightedPick<T extends { prob:number }>(pool:T[]):T {
@@ -266,6 +347,14 @@ export default function Home() {
   const [breedB,setBreedB]=useState<number|null>(null);
   const [breedResult,setBreedResult]=useState<NFTChicken|null>(null);
 
+  // Growth: Daily Login / Referral / Gacha
+  const [goldenEgg,setGoldenEgg]=useState(0);
+  const [dailyLogin,setDailyLogin]=useState<DailyLoginState>({ streak:0, lastClaim:"", claimedDays:[] });
+  const [referral,setReferral]=useState<ReferralState>(()=>({ code:genReferralCode("Pejuang Nusantara"), invited:0, claimedMilestones:[] }));
+  const [growthTab,setGrowthTab]=useState<"daily"|"referral"|"gacha">("daily");
+  const [gachaResults,setGachaResults]=useState<NFTChicken[]|null>(null);
+  const [isGacha,setIsGacha]=useState(false);
+
   const audioCtxRef=useRef<AudioContext|null>(null);
   const bgStopRef  =useRef<(()=>void)|null>(null);
   const floatId    =useRef(0);
@@ -300,6 +389,9 @@ export default function Home() {
     if(typeof s.bossDefeated==="boolean")setBossDefeated(s.bossDefeated);
     if(typeof s.bossDmgToday==="number")setBossDmgToday(s.bossDmgToday);
     if(typeof s.bossDate==="string")   setBossDate(s.bossDate);
+    if(typeof s.goldenEgg==="number")  setGoldenEgg(s.goldenEgg);
+    if(s.dailyLogin)                   setDailyLogin(s.dailyLogin as DailyLoginState);
+    if(s.referral)                     setReferral(s.referral as ReferralState);
   },[]);
 
   // ── Save ──
@@ -309,9 +401,10 @@ export default function Home() {
         eggs,worms,tokens,grid,boostEndTime,totalEarned,playerName,
         nftChickens,nftEquipment,arenaPoints,seasonPts,seasonStart,
         pvpDefense,myClan,bossHP,bossDefeated,bossDmgToday,bossDate,
+        goldenEgg,dailyLogin,referral,
       }));
     } catch{}
-  },[eggs,worms,tokens,grid,boostEndTime,totalEarned,playerName,nftChickens,nftEquipment,arenaPoints,seasonPts,seasonStart,pvpDefense,myClan,bossHP,bossDefeated,bossDmgToday,bossDate]);
+  },[eggs,worms,tokens,grid,boostEndTime,totalEarned,playerName,nftChickens,nftEquipment,arenaPoints,seasonPts,seasonStart,pvpDefense,myClan,bossHP,bossDefeated,bossDmgToday,bossDate,goldenEgg,dailyLogin,referral]);
 
   // ── Reset boss daily ──
   useEffect(()=>{
@@ -428,13 +521,13 @@ export default function Home() {
     } else {
       if(selectedCell===idx){setSelectedCell(null);return;}
       const a=grid[selectedCell],b=grid[idx];
-      if(a&&b&&a.tier===b.tier&&a.tier<20){
+      if(a&&b&&a.tier===b.tier&&a.tier<6){
         setGrid(g=>{const n=[...g];n[selectedCell]=null;n[idx]={tier:(a.tier+1) as TierId,id:Date.now()};return n;});
         const nt=getTier((a.tier+1) as TierId);
         playMergeSound();
         showToast(`Merge! ${nt.emoji} ${nt.name} (${nt.rarity})`);
-        // auto-mint if tier >= 8
-        if((a.tier+1)>=8){
+        // auto-mint if tier >= 3 (Epic+)
+        if((a.tier+1)>=3){
           showToast(`🃏 ${nt.name} siap di-mint jadi NFT!`,"success");
         }
       } else if(!b){
@@ -446,25 +539,24 @@ export default function Home() {
     }
   }
   function mintFromGrid(cell:GridCell){
-    if(cell.tier<8){showToast("Tier 8+ untuk mint NFT!","err");return;}
+    if(cell.tier<3){showToast("Tier 3+ (Epic) untuk mint NFT!","err");return;}
     if(eggs<NFT_MINT_COST){showToast(`Butuh ${fmtNum(NFT_MINT_COST)} 🥚!`,"err");return;}
-    const tierData=getTier(cell.tier);
     const rp=weightedPick(NFT_RARITY_PROB);
-    const el=ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+    const hero=pickRandomHero(rp.rarity);
     const newNFT:NFTChicken={
-      id:Date.now(),name:tierData.name,emoji:tierData.emoji,element:el,
+      id:Date.now(),name:hero.name,emoji:hero.emoji,element:hero.element,
       rarity:rp.rarity,stats:randomStat(rp.rarity),breedCount:0,skills:randomSkills(rp.rarity),
     };
     setEggs(e=>e-NFT_MINT_COST);
     setNftChickens(prev=>[...prev,newNFT]);
     // remove from grid
     setGrid(g=>{const n=[...g];const i=n.findIndex(c=>c&&c.id===cell.id);if(i>=0)n[i]=null;return n;});
-    showToast(`NFT ${rp.rarity} ${ELEMENT_EMOJI[el]} ${tierData.name} di-mint! 🎉`,"success");
+    showToast(`Hero ${rp.rarity} ${ELEMENT_EMOJI[hero.element]} ${hero.name} di-mint! 🎉`,"success");
   }
 
   // ── NFT Helpers ──
   function randomStat(rarity:NFTRarity):NFTStat{
-    const base={Common:1,Rare:1.3,Epic:1.7,Legendary:2.5}[rarity];
+    const base={Common:1,Rare:1.3,Epic:1.7,Legendary:2.5,Mythic:3.6,Divine:5.2}[rarity];
     return{
       hp:Math.floor((50+Math.random()*50)*base),
       attack:Math.floor((30+Math.random()*40)*base),
@@ -475,8 +567,8 @@ export default function Home() {
   function randomSkills(rarity:NFTRarity):string[]{
     const pool=["Pecuk Kilat ⚡","Sayap Badai 🌪️","Taji Api 🔥","Pukulan Bumi 🌍","Arus Deras 💧",
                 "Terbang Tinggi 🦅","Cakar Baja 🦾","Aura Legenda 👑","Mata Elang 👁️","Lari Angin 💨"];
-    const count={Common:1,Rare:2,Epic:3,Legendary:4}[rarity];
-    return [...pool].sort(()=>Math.random()-0.5).slice(0,count);
+    const count={Common:1,Rare:2,Epic:3,Legendary:4,Mythic:5,Divine:6}[rarity];
+    return [...pool].sort(()=>Math.random()-0.5).slice(0,Math.min(count,pool.length));
   }
   function burnNFT(id:number){
     setNftChickens(prev=>prev.filter(n=>n.id!==id));
@@ -637,10 +729,11 @@ export default function Home() {
     const combo=BREED_COMBOS[comboKey];
     const rp=weightedPick(NFT_RARITY_PROB);
     const el=combo?nA.element:ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+    const hero=combo?null:pickRandomHero(rp.rarity);
     const child:NFTChicken={
       id:Date.now()+1,
-      name:combo?combo.name:`${nA.name}×${nB.name}`,
-      emoji:combo?combo.emoji:(Math.random()<0.5?nA.emoji:nB.emoji),
+      name:combo?combo.name:hero!.name,
+      emoji:combo?combo.emoji:hero!.emoji,
       element:el,rarity:rp.rarity,
       stats:randomStat(rp.rarity),breedCount:0,skills:randomSkills(rp.rarity),
     };
@@ -649,6 +742,85 @@ export default function Home() {
     setBreedA(null);setBreedB(null);
     if(combo)showToast(`🔥 Hybrid langka: ${combo.name}! ${combo.bonus}`,"success");
     else showToast(`Breeding berhasil! ${rp.rarity} ${ELEMENT_EMOJI[el]} lahir! 🥚`,"success");
+  }
+
+  // ── Daily Login ──
+  function currentDailyDay():number {
+    // streak 0 = belum pernah klaim → hari 1
+    return (dailyLogin.streak%30)+1;
+  }
+  function canClaimDaily():boolean { return dailyLogin.lastClaim!==todayStr(); }
+  function claimDaily(){
+    if(!canClaimDaily()){showToast("Sudah klaim hari ini! Balik lagi besok 👋","err");return;}
+    const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const brokeStreak=dailyLogin.lastClaim!==""&&dailyLogin.lastClaim!==yesterday;
+    const newStreak=brokeStreak?1:dailyLogin.streak+1;
+    const day=(newStreak%30===0)?30:(newStreak%30);
+    const reward=DAILY_REWARDS[day-1];
+    setEggs(e=>e+reward.eggs);
+    setTotalEarned(t=>t+reward.eggs);
+    setGoldenEgg(g=>g+reward.goldenEgg);
+    if(reward.guaranteed){
+      const hero=pickRandomHero(reward.guaranteed);
+      const nft:NFTChicken={ id:Date.now(),name:hero.name,emoji:hero.emoji,element:hero.element,
+        rarity:reward.guaranteed,stats:randomStat(reward.guaranteed),breedCount:0,skills:randomSkills(reward.guaranteed) };
+      setNftChickens(prev=>[...prev,nft]);
+      showToast(`Hari ke-${day}! ${reward.label} → ${hero.name} didapat! 🎉`,"success");
+    } else {
+      showToast(`Hari ke-${day} diklaim! ${reward.label}${brokeStreak?" (streak reset)":""}`,"success");
+    }
+    setDailyLogin({ streak:newStreak, lastClaim:todayStr(), claimedDays:[...dailyLogin.claimedDays,day] });
+  }
+
+  // ── Referral Viral Loop ──
+  function inviteFriend(){
+    // Simulasi undangan (di Telegram asli ini datang dari deep-link bot)
+    setReferral(r=>({ ...r, invited:r.invited+1 }));
+    showToast("👥 1 teman baru bergabung lewat link referral-mu!","success");
+  }
+  function claimReferralMilestone(m:typeof REFERRAL_MILESTONES[0]){
+    if(referral.invited<m.count){showToast(`Butuh ${m.count} undangan!`,"err");return;}
+    if(referral.claimedMilestones.includes(m.count)){showToast("Sudah diklaim!","err");return;}
+    const hero=pickRandomHero(m.heroRarity);
+    const nft:NFTChicken={ id:Date.now(),name:hero.name,emoji:hero.emoji,element:hero.element,
+      rarity:m.heroRarity,stats:randomStat(m.heroRarity),breedCount:0,skills:randomSkills(m.heroRarity) };
+    setNftChickens(prev=>[...prev,nft]);
+    setGoldenEgg(g=>g+m.goldenEgg);
+    setReferral(r=>({ ...r, claimedMilestones:[...r.claimedMilestones,m.count] }));
+    showToast(`🎁 Milestone ${m.count} teman! ${hero.name} + ${m.goldenEgg}🥚✨ didapat!`,"success");
+  }
+  function copyReferralCode(){
+    try{ navigator.clipboard?.writeText(referral.code); }catch{}
+    showToast(`Kode "${referral.code}" disalin! Bagikan ke teman 📋`,"success");
+  }
+
+  // ── Egg Gacha ──
+  function buyGoldenEgg(){
+    if(eggs<GOLDEN_EGG_BUY_RATE){showToast(`Butuh ${fmtNum(GOLDEN_EGG_BUY_RATE)}🥚!`,"err");return;}
+    setEggs(e=>e-GOLDEN_EGG_BUY_RATE);
+    setGoldenEgg(g=>g+1);
+    showToast("+1 🥚✨ Golden Egg dibeli!","success");
+  }
+  function doGachaPull(times:1|10){
+    const cost=GACHA_COST_GOLDEN_EGG*times;
+    if(goldenEgg<cost){showToast(`Butuh ${cost} 🥚✨ Golden Egg!`,"err");return;}
+    if(isGacha)return;
+    setIsGacha(true);
+    setGoldenEgg(g=>g-cost);
+    const pulls:NFTChicken[]=[];
+    for(let i=0;i<times;i++){
+      const rp=weightedPick(GACHA_PROB);
+      const hero=pickRandomHero(rp.rarity);
+      pulls.push({ id:Date.now()+i,name:hero.name,emoji:hero.emoji,element:hero.element,
+        rarity:rp.rarity,stats:randomStat(rp.rarity),breedCount:0,skills:randomSkills(rp.rarity) });
+    }
+    setTimeout(()=>{
+      setNftChickens(prev=>[...prev,...pulls]);
+      setGachaResults(pulls);
+      setIsGacha(false);
+      const best=pulls.reduce((b,p)=>NFT_RARITY_PROB.findIndex(r=>r.rarity===p.rarity)>NFT_RARITY_PROB.findIndex(r=>r.rarity===b.rarity)?p:b,pulls[0]);
+      showToast(`Gacha selesai! Terbaik: ${best.rarity} ${best.name} 🎉`,"success");
+    },900);
   }
 
   // ── Derived ──
@@ -667,6 +839,8 @@ export default function Home() {
   const NAV:[Screen,string,string][]=[
     ["home","🏠","Home"],
     ["farm","🐔","Farm"],
+    ["heroes","🃏","Hero"],
+    ["growth","🎁","Growth"],
     ["arena","⚔️","Arena"],
     ["clan","🏰","Clan"],
     ["market","🛒","Pasar"],
@@ -713,6 +887,7 @@ export default function Home() {
         </div>
         <div style={{ display:"flex",gap:10,alignItems:"center" }}>
           <span style={{ fontSize:12 }}>🥚 <b style={{ color:"#fbbf24" }}>{fmtNum(eggs)}</b></span>
+          <span style={{ fontSize:12 }}>🥚✨ <b style={{ color:"#fde047" }}>{goldenEgg}</b></span>
           <span style={{ fontSize:12 }}>🪙 <b style={{ color:"#c084fc" }}>{tokens}</b></span>
           <span style={{ fontSize:11,background:curSeasonRank.color+"22",color:curSeasonRank.color,
             border:`1px solid ${curSeasonRank.color}44`,borderRadius:8,padding:"2px 7px",fontWeight:700 }}>
@@ -895,6 +1070,42 @@ export default function Home() {
               </div>
             </button>
 
+            {/* Daily login + referral teaser */}
+            <button onClick={()=>{setScreen("growth");setGrowthTab("daily");}} style={{
+              background:canClaimDaily()?"linear-gradient(135deg,#2a2300,#1a1500)":"#0d0d22",
+              border:`1px solid ${canClaimDaily()?"#fbbf2477":"#1e1e40"}`,borderRadius:14,padding:14,
+              cursor:"pointer",textAlign:"left",width:"100%" }}>
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                  <span style={{ fontSize:28 }}>🎁</span>
+                  <div>
+                    <div style={{ fontWeight:700,fontSize:14,color:"#fbbf24" }}>
+                      Daily Login • Hari {currentDailyDay()}
+                    </div>
+                    <div style={{ fontSize:11,color:"#6b7280" }}>
+                      {canClaimDaily()?"Reward hari ini siap diambil! 🔥":"Sudah diklaim — balik besok"}
+                    </div>
+                  </div>
+                </div>
+                {canClaimDaily()&&<span className="glow" style={{ fontSize:11,background:"#fbbf24",color:"#000",
+                  borderRadius:8,padding:"3px 8px",fontWeight:800 }}>KLAIM</span>}
+              </div>
+            </button>
+
+            <button onClick={()=>{setScreen("growth");setGrowthTab("referral");}} style={{
+              background:"#0a1a2a",border:"1px solid #3b82f644",borderRadius:14,padding:14,
+              cursor:"pointer",textAlign:"left",width:"100%" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <span style={{ fontSize:28 }}>👥</span>
+                <div>
+                  <div style={{ fontWeight:700,fontSize:14,color:"#60a5fa" }}>Undang Teman, Dapat Hero!</div>
+                  <div style={{ fontSize:11,color:"#6b7280" }}>
+                    {referral.invited} teman diundang — semakin viral, semakin cuan 🚀
+                  </div>
+                </div>
+              </div>
+            </button>
+
           </div>
         )}
 
@@ -913,7 +1124,7 @@ export default function Home() {
               {grid.map((cell,idx)=>{
                 const td=cell?getTier(cell.tier):null;
                 const sel=selectedCell===idx;
-                const canMint=cell&&cell.tier>=8;
+                const canMint=cell&&cell.tier>=3;
                 return(
                   <div key={idx} className="mcell" onClick={()=>cellClick(idx)} style={{
                     aspectRatio:"1",background:sel?"#1e1e50":cell?"#111130":"#0d0d22",
@@ -957,10 +1168,10 @@ export default function Home() {
                   );
                 })}
               </div>
-              {maxTierInGrid>=8&&(
+              {maxTierInGrid>=3&&(
                 <div style={{ marginTop:8,fontSize:11,color:"#c084fc",background:"#1a0a2a",
                   borderRadius:8,padding:"6px 10px",border:"1px solid #7c3aed33" }}>
-                  🃏 Tier 8+ bisa di-mint jadi NFT! Klik tombol "NFT" di sel ayam.
+                  🃏 Tier Epic+ bisa di-mint jadi Hero NFT! Klik tombol "NFT" di sel ayam.
                 </div>
               )}
             </div>
@@ -991,6 +1202,227 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* ══════════════════════════════════════════ GROWTH (Daily/Referral/Gacha) ══ */}
+        {screen==="growth"&&(
+          <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
+
+            {/* Sub tabs */}
+            <div style={{ display:"flex",gap:6,background:"#0a0a18",borderRadius:12,padding:4 }}>
+              {([["daily","🎁","Daily"],["referral","👥","Referral"],["gacha","🥚✨","Gacha"]] as [typeof growthTab,string,string][]).map(([key,emoji,label])=>(
+                <button key={key} onClick={()=>setGrowthTab(key)} style={{
+                  flex:1,padding:"8px 4px",borderRadius:9,border:"none",cursor:"pointer",
+                  background:growthTab===key?"#1e1e40":"transparent",
+                  color:growthTab===key?"#fbbf24":"#6b7280",fontWeight:700,fontSize:12,
+                }}>
+                  {emoji} {label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── DAILY LOGIN ── */}
+            {growthTab==="daily"&&(
+              <>
+                <div style={{ background:"#111130",border:"1px solid #1e1e40",borderRadius:14,padding:14,textAlign:"center" }}>
+                  <div style={{ fontSize:11,color:"#9ca3af" }}>STREAK SAAT INI</div>
+                  <div style={{ fontSize:26,fontWeight:900,color:"#fbbf24" }}>🔥 {dailyLogin.streak} hari</div>
+                  <button onClick={claimDaily} disabled={!canClaimDaily()} style={{
+                    ...btn(canClaimDaily()?"#7c2d12":"#1e1e40",canClaimDaily()?"#fbbf24":"#2d2d5e"),
+                    marginTop:10,opacity:canClaimDaily()?1:.5,
+                  }}>
+                    {canClaimDaily()?`🎁 Klaim Hari ke-${currentDailyDay()}`:"✅ Sudah diklaim hari ini"}
+                  </button>
+                </div>
+
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6 }}>
+                  {DAILY_REWARDS.map(r=>{
+                    const claimed=dailyLogin.claimedDays.includes(r.day);
+                    const isNext=r.day===currentDailyDay()&&canClaimDaily();
+                    const special=!!r.guaranteed;
+                    return(
+                      <div key={r.day} title={r.label} style={{
+                        aspectRatio:"1",borderRadius:10,display:"flex",flexDirection:"column",
+                        alignItems:"center",justifyContent:"center",fontSize:9,gap:2,
+                        background:claimed?"#0a2a10":isNext?"#2a2300":"#111130",
+                        border:`1px solid ${special?"#fbbf24":isNext?"#fbbf2477":claimed?"#16a34a55":"#1e1e40"}`,
+                      }}>
+                        <span style={{ fontSize:special?16:13 }}>{special?(r.guaranteed==="Legendary"?"👑":"🃏"):claimed?"✅":"🥚"}</span>
+                        <span style={{ color:"#9ca3af" }}>D{r.day}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize:10,color:"#6b7280",textAlign:"center" }}>
+                  Hari 1: 100🥚 • Hari 7: Epic Egg 🃏 • Hari 30: Legendary Egg 👑 — jangan putus streak!
+                </div>
+              </>
+            )}
+
+            {/* ── REFERRAL ── */}
+            {growthTab==="referral"&&(
+              <>
+                <div style={{ background:"linear-gradient(135deg,#0a1a2a,#111130)",border:"1px solid #3b82f655",
+                  borderRadius:14,padding:14,textAlign:"center" }}>
+                  <div style={{ fontSize:11,color:"#9ca3af" }}>KODE REFERRAL-MU</div>
+                  <div style={{ fontSize:22,fontWeight:900,color:"#60a5fa",letterSpacing:1,marginTop:2 }}>{referral.code}</div>
+                  <div style={{ fontSize:11,color:"#6b7280",marginTop:4 }}>{referral.invited} teman sudah diundang 🚀</div>
+                  <div style={{ display:"flex",gap:8,marginTop:10 }}>
+                    <button onClick={copyReferralCode} style={{ ...btn("#1e3a5f","#3b82f6"),fontSize:12 }}>📋 Salin Kode</button>
+                    <button onClick={inviteFriend} style={{ ...btn("#1e3a8a","#60a5fa"),fontSize:12 }}>👥 Simulasi Undang</button>
+                  </div>
+                  <div style={{ fontSize:9,color:"#6b7280",marginTop:6 }}>
+                    (Demo lokal — di Telegram asli, link ini otomatis lewat bot share)
+                  </div>
+                </div>
+
+                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                  {REFERRAL_MILESTONES.map(m=>{
+                    const reached=referral.invited>=m.count;
+                    const claimed=referral.claimedMilestones.includes(m.count);
+                    return(
+                      <div key={m.count} style={{ background:"#111130",border:`1px solid ${reached&&!claimed?"#fbbf2477":"#1e1e40"}`,
+                        borderRadius:12,padding:12,display:"flex",alignItems:"center",gap:10 }}>
+                        <span style={{ fontSize:24 }}>{claimed?"✅":reached?"🎁":"🔒"}</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:700,fontSize:13,color:NFT_RARITY_COLOR[m.heroRarity] }}>{m.label}</div>
+                          <div style={{ fontSize:10,color:"#9ca3af" }}>{referral.invited}/{m.count} teman • +{m.goldenEgg} 🥚✨</div>
+                        </div>
+                        <button onClick={()=>claimReferralMilestone(m)} disabled={!reached||claimed} style={{
+                          ...btn(reached&&!claimed?"#7c2d12":"#1e1e40",reached&&!claimed?"#fbbf24":"#2d2d5e"),
+                          width:"auto",padding:"6px 12px",fontSize:11,opacity:reached&&!claimed?1:.4,
+                        }}>
+                          {claimed?"Diklaim":"Klaim"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ background:"#0a1a10",border:"1px solid #065f4644",borderRadius:10,padding:10 }}>
+                  <div style={{ fontSize:11,fontWeight:700,color:"#34d399",marginBottom:4 }}>Kenapa invite penting?</div>
+                  <div style={{ fontSize:10,color:"#6b7280",lineHeight:1.8 }}>
+                    Setiap teman yang main lewat kodemu = progress lebih cepat buat kalian berdua 🤝<br/>
+                    Reward referral cuma bisa didapat dari mengundang — bukan dibeli 💎
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── GACHA ── */}
+            {growthTab==="gacha"&&(
+              <>
+                <div style={{ background:"linear-gradient(135deg,#2a2300,#111130)",border:"1px solid #fbbf2455",
+                  borderRadius:16,padding:16,textAlign:"center" }}>
+                  <div style={{ fontSize:34 }}>🥚✨</div>
+                  <div style={{ fontWeight:800,fontSize:16,color:"#fbbf24",marginTop:4 }}>Egg Gacha</div>
+                  <div style={{ fontSize:11,color:"#9ca3af",marginTop:2 }}>
+                    Common 70% • Rare 20% • Epic 8% • Legendary 2%
+                  </div>
+                  <div style={{ fontSize:13,marginTop:8 }}>Punya <b style={{ color:"#fde047" }}>{goldenEgg} 🥚✨</b></div>
+                  <div style={{ display:"flex",gap:8,marginTop:12 }}>
+                    <button onClick={()=>doGachaPull(1)} disabled={isGacha||goldenEgg<1} style={{
+                      ...btn("#7c2d12","#fbbf24"),opacity:isGacha||goldenEgg<1?.4:1 }}>
+                      🥚 Buka 1 ({GACHA_COST_GOLDEN_EGG} 🥚✨)
+                    </button>
+                    <button onClick={()=>doGachaPull(10)} disabled={isGacha||goldenEgg<10} style={{
+                      ...btn("#7c2d12","#fbbf24"),opacity:isGacha||goldenEgg<10?.4:1 }}>
+                      🥚×10 Buka 10 ({GACHA_COST_GOLDEN_EGG*10} 🥚✨)
+                    </button>
+                  </div>
+                  <button onClick={buyGoldenEgg} style={{ ...btn("#1e1e40","#3d3d6e"),marginTop:8,fontSize:11 }}>
+                    💰 Beli 1 🥚✨ — {fmtNum(GOLDEN_EGG_BUY_RATE)} 🥚
+                  </button>
+                </div>
+
+                {isGacha&&(
+                  <div style={{ textAlign:"center",fontSize:13,color:"#fbbf24",animation:"pulse 0.6s infinite" }}>
+                    🥚 Membuka telur...
+                  </div>
+                )}
+
+                {gachaResults&&!isGacha&&(
+                  <div style={{ background:"#0a0a1a",border:"1px solid #1e1e40",borderRadius:14,padding:12 }}>
+                    <div style={{ fontWeight:700,fontSize:13,color:"#fbbf24",marginBottom:8,textAlign:"center" }}>
+                      🎉 Hasil Gacha
+                    </div>
+                    <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6 }}>
+                      {gachaResults.map(r=>(
+                        <div key={r.id} style={{ aspectRatio:"1",background:"#111130",
+                          border:`1px solid ${NFT_RARITY_COLOR[r.rarity]}`,borderRadius:10,
+                          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1 }}>
+                          <span style={{ fontSize:18 }}>{r.emoji}</span>
+                          <span style={{ fontSize:7,color:NFT_RARITY_COLOR[r.rarity],fontWeight:700 }}>{r.rarity}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={()=>setGachaResults(null)} style={{ ...btn("#1e1e40","#3d3d6e"),marginTop:10,fontSize:11 }}>
+                      ✕ Tutup
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════ HERO COLLECTION ══ */}
+        {screen==="heroes"&&(()=>{
+          const ownedKeys=new Set(nftChickens.map(n=>n.name));
+          const rarityOrder:NFTRarity[]=["Common","Rare","Epic","Legendary","Mythic","Divine"];
+          const ownedCount=HEROES.filter(h=>ownedKeys.has(h.name)).length;
+          return(
+            <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
+              <div style={{ background:"#111130",border:"1px solid #1e1e40",borderRadius:14,padding:12,textAlign:"center" }}>
+                <div style={{ fontWeight:800,fontSize:16,color:"#fbbf24" }}>🃏 Hero Collection</div>
+                <div style={{ fontSize:12,color:"#9ca3af",marginTop:2 }}>{ownedCount}/{HEROES.length} Hero terkumpul</div>
+                <div style={{ background:"#1e1e40",borderRadius:6,height:6,overflow:"hidden",marginTop:8 }}>
+                  <div style={{ background:"#fbbf24",height:"100%",borderRadius:6,
+                    width:`${(ownedCount/HEROES.length)*100}%`,transition:"width .4s" }} />
+                </div>
+              </div>
+
+              {rarityOrder.map(rarity=>{
+                const heroes=heroesByRarity(rarity);
+                const owned=heroes.filter(h=>ownedKeys.has(h.name)).length;
+                return(
+                  <div key={rarity}>
+                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+                      <div style={{ fontWeight:700,fontSize:13,color:NFT_RARITY_COLOR[rarity] }}>
+                        {rarity} ({owned}/{heroes.length})
+                      </div>
+                    </div>
+                    <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6 }}>
+                      {heroes.map(h=>{
+                        const isOwned=ownedKeys.has(h.name);
+                        return(
+                          <div key={h.key} title={h.name} style={{
+                            aspectRatio:"1",background:isOwned?"#111130":"#0d0d1a",
+                            border:`1px solid ${isOwned?NFT_RARITY_COLOR[rarity]+"66":"#1e1e30"}`,
+                            borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",
+                            justifyContent:"center",gap:1,opacity:isOwned?1:.35,
+                          }}>
+                            <span style={{ fontSize:18,filter:isOwned?"none":"grayscale(1)" }}>{h.emoji}</span>
+                            <span style={{ fontSize:8 }}>{ELEMENT_EMOJI[h.element]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={{ background:"#0a1a10",border:"1px solid #065f4644",borderRadius:10,padding:10 }}>
+                <div style={{ fontSize:11,fontWeight:700,color:"#34d399",marginBottom:4 }}>Cara dapat Hero baru</div>
+                <div style={{ fontSize:10,color:"#6b7280",lineHeight:1.8 }}>
+                  Merge ayam ke Tier Epic+ lalu mint jadi Hero NFT 🃏<br/>
+                  Breeding 2 NFT bisa menghasilkan Hero acak baru 🥚<br/>
+                  Beli Hero langsung dari pemain lain di Pasar 🛒
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ══════════════════════════════════════════ ARENA ══ */}
         {screen==="arena"&&(
