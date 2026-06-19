@@ -3,77 +3,125 @@
 import { useEffect, useMemo, useState } from "react";
 
 type HeroClass = "Warrior" | "Archer" | "Sorceress" | "Cleric" | "Assassin";
-type HeroRarity = "N" | "R" | "SR" | "SSR" | "UR";
-type Element = "Fire" | "Ice" | "Light" | "Dark";
+type Gender = "Male" | "Female";
 type Screen =
+  | "character-create"
   | "home"
   | "dungeon"
+  | "nest"
   | "arena"
   | "guild"
-  | "market"
-  | "heroes"
-  | "boss"
-  | "summon";
+  | "inventory"
+  | "skills";
+type Rarity = "Common" | "Rare" | "Epic" | "Legendary";
+type EquipmentSlot =
+  | "Weapon"
+  | "Helmet"
+  | "Armor"
+  | "Gloves"
+  | "Shoes"
+  | "Ring"
+  | "Necklace";
 
-interface Hero {
-  id: number;
+interface PlayerCharacter {
   name: string;
   class: HeroClass;
-  rarity: HeroRarity;
   level: number;
+  exp: number;
   power: number;
   hp: number;
   attack: number;
-  element: Element;
-  shards: number;
+  gender: Gender;
+  hair: string;
+  face: string;
+  costume: string;
+  job: string;
 }
 
-type Equipment = {
+interface Quest {
+  id: number;
+  title: string;
+  target: number;
+  progress: number;
+  rewardGold: number;
+  rewardExp: number;
+  claimed: boolean;
+}
+
+interface Job {
+  name: string;
+  levelRequired: number;
+}
+
+interface Skill {
+  name: string;
+  level: number;
+  damage: number;
+}
+
+interface Pet {
+  name: string;
+  rarity: Rarity;
+  powerBonus: number;
+  attackBonus: number;
+  hpBonus: number;
+  goldBonus: number;
+}
+
+interface Equipment {
   id: number;
   name: string;
-  slot: "Weapon" | "Armor" | "Accessory";
-  rarity: HeroRarity;
-  bonusPower: number;
-};
+  slot: EquipmentSlot;
+  rarity: Rarity;
+  power: number;
+  hp: number;
+  attack: number;
+}
 
-type Guild = {
+interface DungeonStage {
+  chapter: number;
+  area: string;
+  stage: number;
+  name: string;
+  bossStage?: boolean;
+  requiredPower: number;
+  rewardGold: number;
+  rewardExp: number;
+}
+
+interface Guild {
   name: string;
   tag: string;
   level: number;
   members: number;
   donation: number;
   raidDamage: number;
-};
+}
 
-type Boss = {
-  name: string;
-  element: Element;
-  hp: number;
-  maxHp: number;
-};
+interface SaveData {
+  character: PlayerCharacter | null;
+  gold: number;
+  diamond: number;
+  energy: number;
+  equipment: Partial<Record<EquipmentSlot, Equipment>>;
+  inventory: Equipment[];
+  quests: Quest[];
+  skills: Skill[];
+  pet: Pet | null;
+  guild: Guild | null;
+  arenaRank: number;
+  tutorialDone: boolean;
+}
 
 type Toast = {
   message: string;
   tone: "success" | "error" | "info";
 };
 
-type SaveData = {
-  gold: number;
-  diamond: number;
-  energy: number;
-  heroes: Hero[];
-  equipment: Equipment[];
-  guild: Guild | null;
-  arenaRank: number;
-  boss: Boss;
-};
-
-const SAVE_KEY = "dragon-nest-telegram-mini-app";
-const SUMMON_COST = 250;
+const SAVE_KEY = "dragon-nest-character";
 const DUNGEON_ENERGY_COST = 8;
-const BOSS_ENERGY_COST = 12;
-
-const heroClasses: HeroClass[] = [
+const NEST_ENERGY_COST = 15;
+const CLASS_LIST: HeroClass[] = [
   "Warrior",
   "Archer",
   "Sorceress",
@@ -81,65 +129,184 @@ const heroClasses: HeroClass[] = [
   "Assassin",
 ];
 
-const bosses = ["Sea Dragon", "Black Dragon", "Red Dragon", "Green Dragon"];
-
-const heroNames: Record<HeroClass, string[]> = {
-  Warrior: ["Argenta Blade", "Velskud Guard", "Iron Saint", "Moonlord"],
-  Archer: ["Windwalker", "Sniper Rose", "Tempest Lira", "Falcon Eye"],
-  Sorceress: ["Elestra", "Saleana", "Majesty", "Smasher"],
-  Cleric: ["Guardian", "Saint Noah", "Crusader", "Inquisitor"],
-  Assassin: ["Raven", "Ripper", "Light Fury", "Abyss Walker"],
+const classStats: Record<
+  HeroClass,
+  { hp: number; attack: number; power: number; traits: string[] }
+> = {
+  Warrior: { hp: 1250, attack: 150, power: 720, traits: ["HP Tinggi", "Defense Tinggi"] },
+  Archer: { hp: 900, attack: 220, power: 740, traits: ["Attack Tinggi", "Critical Tinggi"] },
+  Sorceress: { hp: 820, attack: 260, power: 760, traits: ["Magic Damage Tinggi", "Area Skill"] },
+  Cleric: { hp: 1180, attack: 165, power: 710, traits: ["Support", "Survival Tinggi"] },
+  Assassin: { hp: 940, attack: 240, power: 755, traits: ["Burst Damage", "Mobilitas Tinggi"] },
 };
 
-const rarityColor: Record<HeroRarity, string> = {
-  N: "#94a3b8",
-  R: "#7dd3fc",
-  SR: "#a78bfa",
-  SSR: "#f59e0b",
-  UR: "#fb7185",
+const jobTree: Record<HeroClass, Job[]> = {
+  Warrior: [
+    { name: "Mercenary", levelRequired: 15 },
+    { name: "Swordmaster", levelRequired: 15 },
+    { name: "Barbarian", levelRequired: 45 },
+    { name: "Destroyer", levelRequired: 45 },
+    { name: "Moonlord", levelRequired: 45 },
+    { name: "Gladiator", levelRequired: 45 },
+  ],
+  Archer: [
+    { name: "Sharpshooter", levelRequired: 15 },
+    { name: "Acrobat", levelRequired: 15 },
+    { name: "Sniper", levelRequired: 45 },
+    { name: "Artillery", levelRequired: 45 },
+    { name: "Tempest", levelRequired: 45 },
+    { name: "Windwalker", levelRequired: 45 },
+  ],
+  Sorceress: [
+    { name: "Elemental Lord", levelRequired: 15 },
+    { name: "Force User", levelRequired: 15 },
+    { name: "Saleana", levelRequired: 45 },
+    { name: "Elestra", levelRequired: 45 },
+    { name: "Smasher", levelRequired: 45 },
+    { name: "Majesty", levelRequired: 45 },
+  ],
+  Cleric: [
+    { name: "Priest", levelRequired: 15 },
+    { name: "Paladin", levelRequired: 15 },
+    { name: "Saint", levelRequired: 45 },
+    { name: "Inquisitor", levelRequired: 45 },
+    { name: "Guardian", levelRequired: 45 },
+    { name: "Crusader", levelRequired: 45 },
+  ],
+  Assassin: [
+    { name: "Chaser", levelRequired: 15 },
+    { name: "Bringer", levelRequired: 15 },
+    { name: "Raven", levelRequired: 45 },
+    { name: "Ripper", levelRequired: 45 },
+    { name: "Light Fury", levelRequired: 45 },
+    { name: "Abyss Walker", levelRequired: 45 },
+  ],
 };
 
-const rarityMultiplier: Record<HeroRarity, number> = {
-  N: 0.8,
-  R: 1,
-  SR: 1.35,
-  SSR: 2.1,
-  UR: 3.25,
+const skillBook: Record<HeroClass, Skill[]> = {
+  Warrior: [
+    { name: "Slash", level: 1, damage: 140 },
+    { name: "Dash", level: 1, damage: 90 },
+    { name: "Whirlwind", level: 1, damage: 230 },
+    { name: "Triple Slash", level: 1, damage: 310 },
+  ],
+  Archer: [
+    { name: "Twin Shot", level: 1, damage: 150 },
+    { name: "Somersault Kick", level: 1, damage: 120 },
+    { name: "Piercing Arrow", level: 1, damage: 250 },
+    { name: "Rain of Arrows", level: 1, damage: 330 },
+  ],
+  Sorceress: [
+    { name: "Fireball", level: 1, damage: 180 },
+    { name: "Glacial Spike", level: 1, damage: 160 },
+    { name: "Poison Cloud", level: 1, damage: 240 },
+    { name: "Meteor Storm", level: 1, damage: 370 },
+  ],
+  Cleric: [
+    { name: "Holy Bolt", level: 1, damage: 130 },
+    { name: "Block", level: 1, damage: 80 },
+    { name: "Lightning Relic", level: 1, damage: 240 },
+    { name: "Divine Combo", level: 1, damage: 300 },
+  ],
+  Assassin: [
+    { name: "Fan of Edge", level: 1, damage: 160 },
+    { name: "Shadow Hand", level: 1, damage: 140 },
+    { name: "Applause", level: 1, damage: 260 },
+    { name: "Izuna Drop", level: 1, damage: 340 },
+  ],
 };
 
-const elementIcon: Record<Element, string> = {
-  Fire: "🔥",
-  Ice: "❄️",
-  Light: "✨",
-  Dark: "🌑",
+const equipmentSlots: EquipmentSlot[] = [
+  "Weapon",
+  "Helmet",
+  "Armor",
+  "Gloves",
+  "Shoes",
+  "Ring",
+  "Necklace",
+];
+
+const rarityColor: Record<Rarity, string> = {
+  Common: "#94a3b8",
+  Rare: "#38bdf8",
+  Epic: "#a78bfa",
+  Legendary: "#f59e0b",
 };
+
+const rarityScale: Record<Rarity, number> = {
+  Common: 1,
+  Rare: 1.35,
+  Epic: 1.9,
+  Legendary: 2.7,
+};
+
+const dungeonStages: DungeonStage[] = [
+  ...createChapter(1, "Prairie Town", 620),
+  ...createChapter(2, "Forest Ruins", 1080),
+  ...createChapter(3, "Mana Ridge", 1720),
+  ...createChapter(4, "Ancient Temple", 2450),
+];
+
+const nestRaids = [
+  { name: "Minotaur Nest", requiredPower: 1450, rewardGold: 850, rewardExp: 180 },
+  { name: "Cerberus Nest", requiredPower: 2300, rewardGold: 1450, rewardExp: 300 },
+  { name: "Sea Dragon Nest", requiredPower: 3900, rewardGold: 2600, rewardExp: 520 },
+  { name: "Black Dragon Nest", requiredPower: 5800, rewardGold: 4200, rewardExp: 760 },
+];
 
 const navItems: Array<{ id: Screen; icon: string; label: string }> = [
   { id: "home", icon: "🏠", label: "Home" },
-  { id: "dungeon", icon: "⚔️", label: "Adventure" },
-  { id: "boss", icon: "🐉", label: "Nest Raid" },
-  { id: "summon", icon: "🎁", label: "Summon" },
-  { id: "heroes", icon: "🦸", label: "Heroes" },
-  { id: "arena", icon: "🏆", label: "Arena" },
+  { id: "dungeon", icon: "⚔️", label: "Dungeon" },
+  { id: "nest", icon: "🐉", label: "Nest" },
+  { id: "inventory", icon: "🎒", label: "Gear" },
+  { id: "skills", icon: "✨", label: "Skills" },
+  { id: "arena", icon: "🏆", label: "PvP" },
   { id: "guild", icon: "🛡️", label: "Guild" },
-  { id: "market", icon: "🛒", label: "Market" },
 ];
 
-const dungeonStages = [
-  { name: "Crystal Stream", element: "Ice" as Element, power: 900, reward: 180 },
-  { name: "Ancient Armory", element: "Light" as Element, power: 1600, reward: 320 },
-  { name: "Dark Banquet", element: "Dark" as Element, power: 2800, reward: 540 },
-  { name: "Molten Nest", element: "Fire" as Element, power: 4200, reward: 760 },
-];
+function createChapter(chapter: number, area: string, basePower: number): DungeonStage[] {
+  return [1, 2, 3, 4].map((stage) => ({
+    chapter,
+    area,
+    stage,
+    name: stage === 4 ? `${area} Boss Stage` : `${area} Stage ${stage}`,
+    bossStage: stage === 4,
+    requiredPower: basePower + stage * 170 + chapter * 90,
+    rewardGold: 180 + chapter * 120 + stage * 55,
+    rewardExp: 45 + chapter * 25 + stage * 20,
+  }));
+}
 
-const marketOffers = [
-  { name: "Adventurer Pack", price: 550, gives: "Weapon +320 Power" },
-  { name: "Guild Supply", price: 900, gives: "Armor +520 Power" },
-  { name: "Dragon Cache", price: 12, diamond: true, gives: "Accessory +900 Power" },
-];
-
-function randomOf<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
+function createQuests(): Quest[] {
+  return [
+    {
+      id: 1,
+      title: "Clear Dungeon 5 kali",
+      target: 5,
+      progress: 0,
+      rewardGold: 1000,
+      rewardExp: 220,
+      claimed: false,
+    },
+    {
+      id: 2,
+      title: "Kalahkan Boss Stage 2 kali",
+      target: 2,
+      progress: 0,
+      rewardGold: 1500,
+      rewardExp: 340,
+      claimed: false,
+    },
+    {
+      id: 3,
+      title: "Selesaikan Nest 1 kali",
+      target: 1,
+      progress: 0,
+      rewardGold: 1800,
+      rewardExp: 420,
+      claimed: false,
+    },
+  ];
 }
 
 function compactNumber(value: number) {
@@ -148,86 +315,101 @@ function compactNumber(value: number) {
   return Math.floor(value).toString();
 }
 
-function summonRarity(): HeroRarity {
-  const roll = Math.random();
-  if (roll < 0.05) return "UR";
-  if (roll < 0.2) return "SSR";
-  if (roll < 0.62) return "SR";
-  return "R";
+function expToNextLevel(level: number) {
+  return 100 + level * 55;
 }
 
-function createHero(rarity: HeroRarity = summonRarity()): Hero {
-  const heroClass = randomOf(heroClasses);
-  const mult = rarityMultiplier[rarity];
-  const hp = Math.floor((820 + Math.random() * 360) * mult);
-  const attack = Math.floor((145 + Math.random() * 95) * mult);
+function totalEquipmentPower(equipment: Partial<Record<EquipmentSlot, Equipment>>) {
+  return Object.values(equipment).reduce((sum, item) => sum + (item?.power ?? 0), 0);
+}
+
+function totalCharacterPower(
+  character: PlayerCharacter | null,
+  equipment: Partial<Record<EquipmentSlot, Equipment>>,
+  pet: Pet | null,
+) {
+  if (!character) return 0;
+  return character.power + totalEquipmentPower(equipment) + (pet?.powerBonus ?? 0);
+}
+
+function levelCharacter(character: PlayerCharacter, gainedExp: number) {
+  let exp = character.exp + gainedExp;
+  let level = character.level;
+  let hp = character.hp;
+  let attack = character.attack;
+  let power = character.power;
+  let leveled = 0;
+
+  while (exp >= expToNextLevel(level)) {
+    exp -= expToNextLevel(level);
+    level += 1;
+    power += 50;
+    hp += 100;
+    attack += 20;
+    leveled += 1;
+  }
+
   return {
-    id: Date.now() + Math.floor(Math.random() * 10_000),
-    name: randomOf(heroNames[heroClass]),
-    class: heroClass,
-    rarity,
-    level: 1,
-    power: Math.floor(hp * 0.42 + attack * 2.5),
-    hp,
-    attack,
-    element: randomOf(["Fire", "Ice", "Light", "Dark"]),
-    shards: 0,
+    character: { ...character, exp, level, hp, attack, power },
+    leveled,
   };
 }
 
-function createEquipment(slot?: Equipment["slot"]): Equipment {
-  const pickedSlot = slot ?? randomOf(["Weapon", "Armor", "Accessory"]);
-  const rarity = randomOf(["R", "SR", "SSR"] as HeroRarity[]);
+function randomRarity(): Rarity {
+  const roll = Math.random();
+  if (roll > 0.94) return "Legendary";
+  if (roll > 0.74) return "Epic";
+  if (roll > 0.42) return "Rare";
+  return "Common";
+}
+
+function randomOf<T>(items: T[]) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function createEquipment(slot?: EquipmentSlot): Equipment {
+  const pickedSlot = slot ?? randomOf(equipmentSlots);
+  const rarity = randomRarity();
+  const scale = rarityScale[rarity];
+  const prefix = rarity === "Legendary" ? "Dragon" : rarity === "Epic" ? "Epic" : rarity === "Rare" ? "Rare" : "Iron";
   return {
-    id: Date.now() + Math.floor(Math.random() * 10_000),
-    name: `${rarity} Dragon ${pickedSlot}`,
+    id: Date.now() + Math.floor(Math.random() * 10000),
+    name: `${prefix} ${pickedSlot}`,
     slot: pickedSlot,
     rarity,
-    bonusPower: Math.floor(220 * rarityMultiplier[rarity] + Math.random() * 180),
+    power: Math.floor(110 * scale + Math.random() * 80),
+    hp: Math.floor(60 * scale + Math.random() * 45),
+    attack: Math.floor(18 * scale + Math.random() * 18),
   };
 }
 
-function createBoss(): Boss {
-  const name = randomOf(bosses);
-  const maxHp = 120_000 + Math.floor(Math.random() * 60_000);
+function resolveDungeonRun(playerPower: number, requiredPower: number) {
   return {
-    name,
-    element: name.includes("Sea")
-      ? "Ice"
-      : name.includes("Black")
-        ? "Dark"
-        : name.includes("Red")
-          ? "Fire"
-          : "Light",
-    hp: maxHp,
-    maxHp,
+    win: playerPower >= requiredPower || Math.random() > 0.3,
+    lootDropped: Math.random() > 0.48,
   };
 }
 
-function initialHeroes() {
-  return [createHero("SR"), createHero("R"), createHero("R")];
-}
-
-function resolveDungeon(totalPower: number, stagePower: number) {
+function resolveArenaRun(playerPower: number) {
   return {
-    victory: totalPower >= stagePower || Math.random() > 0.28,
-    foundEquipment: Math.random() > 0.55,
+    win: playerPower >= 1600 || Math.random() > 0.38,
+    rankGain: Math.floor(70 + Math.random() * 140),
   };
 }
 
-function rollBossDamage(totalPower: number) {
-  return Math.max(4_000, Math.floor(totalPower * (1.8 + Math.random())));
+function rollNestDamage(playerPower: number) {
+  return Math.floor(playerPower * (1.6 + Math.random() * 1.1));
 }
 
-function resolveArena(totalPower: number) {
+function starterPet(characterClass: HeroClass): Pet {
   return {
-    win: totalPower > 1800 || Math.random() > 0.35,
-    rankGain: Math.floor(80 + Math.random() * 160),
+    name: `${characterClass} Spirit`,
+    rarity: "Rare",
+    powerBonus: 160,
+    attackBonus: 18,
+    hpBonus: 90,
+    goldBonus: 8,
   };
-}
-
-function rollGuildRaidDamage(totalPower: number) {
-  return Math.floor(totalPower * (1.1 + Math.random()));
 }
 
 function Button({
@@ -241,12 +423,7 @@ function Button({
   disabled?: boolean;
   tone?: "primary" | "danger" | "quiet";
 }) {
-  const bg =
-    tone === "danger"
-      ? "#7f1d1d"
-      : tone === "quiet"
-        ? "#1f2937"
-        : "#0f766e";
+  const background = tone === "danger" ? "#7f1d1d" : tone === "quiet" ? "#1f2937" : "#0f766e";
   return (
     <button
       onClick={onClick}
@@ -255,9 +432,9 @@ function Button({
         minHeight: 42,
         border: "1px solid rgba(255,255,255,.14)",
         borderRadius: 8,
-        background: disabled ? "#1f2937" : bg,
+        background: disabled ? "#1f2937" : background,
         color: disabled ? "#64748b" : "#f8fafc",
-        fontWeight: 800,
+        fontWeight: 850,
         padding: "10px 12px",
         width: "100%",
       }}
@@ -269,73 +446,43 @@ function Button({
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        background: "#111827",
-        border: "1px solid rgba(255,255,255,.1)",
-        borderRadius: 8,
-        padding: "8px 10px",
-      }}
-    >
+    <div style={statPill}>
       <div style={{ color: "#94a3b8", fontSize: 11 }}>{label}</div>
       <div style={{ color: "#f8fafc", fontWeight: 900 }}>{value}</div>
     </div>
   );
 }
 
-function HeroCard({ hero }: { hero: Hero }) {
+function ProgressBar({ value }: { value: number }) {
   return (
-    <div
-      style={{
-        background: "#0f172a",
-        border: `1px solid ${rarityColor[hero.rarity]}66`,
-        borderRadius: 8,
-        padding: 12,
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <div>
-          <div style={{ color: rarityColor[hero.rarity], fontWeight: 900 }}>
-            {hero.rarity} {hero.name}
-          </div>
-          <div style={{ color: "#94a3b8", fontSize: 12 }}>
-            {hero.class} • {elementIcon[hero.element]} {hero.element} • Lv {hero.level}
-          </div>
-        </div>
-        <div style={{ color: "#facc15", fontWeight: 900 }}>
-          {compactNumber(hero.power)}
-        </div>
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-          marginTop: 10,
-          color: "#cbd5e1",
-          fontSize: 12,
-        }}
-      >
-        <span>HP {compactNumber(hero.hp)}</span>
-        <span>ATK {compactNumber(hero.attack)}</span>
-      </div>
+    <div style={barTrack}>
+      <div style={{ ...barFill, width: `${Math.max(0, Math.min(100, value))}%` }} />
     </div>
   );
 }
 
-export default function DragonNestMiniApp() {
-  const [screen, setScreen] = useState<Screen>("home");
-  const [gold, setGold] = useState(1_800);
-  const [diamond, setDiamond] = useState(35);
-  const [energy, setEnergy] = useState(64);
-  const [heroes, setHeroes] = useState<Hero[]>([]);
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
+export default function DragonNestCharacterRpg() {
+  const [screen, setScreen] = useState<Screen>("character-create");
+  const [character, setCharacter] = useState<PlayerCharacter | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [selectedClass, setSelectedClass] = useState<HeroClass>("Warrior");
+  const [selectedGender, setSelectedGender] = useState<Gender>("Male");
+  const [hair, setHair] = useState("Short");
+  const [face, setFace] = useState("Calm");
+  const [costume, setCostume] = useState("Academy");
+  const [gold, setGold] = useState(900);
+  const [diamond, setDiamond] = useState(20);
+  const [energy, setEnergy] = useState(70);
+  const [equipment, setEquipment] = useState<Partial<Record<EquipmentSlot, Equipment>>>({});
+  const [inventory, setInventory] = useState<Equipment[]>([]);
+  const [quests, setQuests] = useState<Quest[]>(() => createQuests());
+  const [skills, setSkills] = useState<Skill[]>(skillBook.Warrior);
+  const [pet, setPet] = useState<Pet | null>(null);
   const [guild, setGuild] = useState<Guild | null>(null);
   const [guildName, setGuildName] = useState("");
-  const [arenaRank, setArenaRank] = useState(12_480);
-  const [boss, setBoss] = useState<Boss>(() => createBoss());
+  const [arenaRank, setArenaRank] = useState(12800);
+  const [tutorialDone, setTutorialDone] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [summonResult, setSummonResult] = useState<Hero | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -344,19 +491,22 @@ export default function DragonNestMiniApp() {
       if (raw) {
         try {
           const data = JSON.parse(raw) as SaveData;
-          setGold(data.gold ?? 1_800);
-          setDiamond(data.diamond ?? 35);
-          setEnergy(data.energy ?? 64);
-          setHeroes(data.heroes?.length ? data.heroes : initialHeroes());
-          setEquipment(data.equipment ?? []);
+          setCharacter(data.character ?? null);
+          setGold(data.gold ?? 900);
+          setDiamond(data.diamond ?? 20);
+          setEnergy(data.energy ?? 70);
+          setEquipment(data.equipment ?? {});
+          setInventory(data.inventory ?? []);
+          setQuests(data.quests ?? createQuests());
+          setSkills(data.skills ?? (data.character ? skillBook[data.character.class] : skillBook.Warrior));
+          setPet(data.pet ?? null);
           setGuild(data.guild ?? null);
-          setArenaRank(data.arenaRank ?? 12_480);
-          setBoss(data.boss ?? createBoss());
+          setArenaRank(data.arenaRank ?? 12800);
+          setTutorialDone(data.tutorialDone ?? false);
+          setScreen(data.character ? "home" : "character-create");
         } catch {
-          setHeroes(initialHeroes());
+          setScreen("character-create");
         }
-      } else {
-        setHeroes(initialHeroes());
       }
       setLoaded(true);
     });
@@ -365,105 +515,197 @@ export default function DragonNestMiniApp() {
   useEffect(() => {
     if (!loaded) return;
     const data: SaveData = {
+      character,
       gold,
       diamond,
       energy,
-      heroes,
       equipment,
+      inventory,
+      quests,
+      skills,
+      pet,
       guild,
       arenaRank,
-      boss,
+      tutorialDone,
     };
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-  }, [arenaRank, boss, diamond, energy, equipment, gold, guild, heroes, loaded]);
+  }, [
+    arenaRank,
+    character,
+    diamond,
+    energy,
+    equipment,
+    gold,
+    guild,
+    inventory,
+    loaded,
+    pet,
+    quests,
+    skills,
+    tutorialDone,
+  ]);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(() => setToast(null), 2200);
+    const timer = window.setTimeout(() => setToast(null), 2400);
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const totalPower = useMemo(
-    () =>
-      heroes.reduce((sum, hero) => sum + hero.power, 0) +
-      equipment.reduce((sum, item) => sum + item.bonusPower, 0),
-    [equipment, heroes],
+  const playerPower = useMemo(
+    () => totalCharacterPower(character, equipment, pet),
+    [character, equipment, pet],
   );
 
-  const bestHero = useMemo(
-    () => heroes.reduce<Hero | null>((best, hero) => (!best || hero.power > best.power ? hero : best), null),
-    [heroes],
-  );
+  const expPercent = character ? (character.exp / expToNextLevel(character.level)) * 100 : 0;
+  const availableJobs = character ? jobTree[character.class].filter((job) => character.level >= job.levelRequired) : [];
 
   function notify(message: string, tone: Toast["tone"] = "info") {
     setToast({ message, tone });
   }
 
-  function summonHero() {
-    if (gold < SUMMON_COST) {
-      notify("Gold tidak cukup untuk Hero Summon.", "error");
+  function createCharacter() {
+    const cleanName = nameInput.trim();
+    if (cleanName.length < 3) {
+      notify("Nama character minimal 3 karakter.", "error");
       return;
     }
-    const hero = createHero();
-    setGold((value) => value - SUMMON_COST);
-    setHeroes((value) => [hero, ...value]);
-    setSummonResult(hero);
-    notify(`${hero.rarity} ${hero.name} bergabung.`, "success");
+    const base = classStats[selectedClass];
+    const newCharacter: PlayerCharacter = {
+      name: cleanName,
+      class: selectedClass,
+      level: 1,
+      exp: 0,
+      power: base.power,
+      hp: base.hp,
+      attack: base.attack,
+      gender: selectedGender,
+      hair,
+      face,
+      costume,
+      job: selectedClass,
+    };
+    setCharacter(newCharacter);
+    setSkills(skillBook[selectedClass]);
+    setPet(starterPet(selectedClass));
+    setInventory([createEquipment("Weapon"), createEquipment("Armor")]);
+    setTutorialDone(false);
+    setScreen("home");
+    notify("Welcome Adventurer. Tutorial dimulai.", "success");
   }
 
-  function runDungeon(stage: (typeof dungeonStages)[number]) {
+  function applyExp(gainExp: number) {
+    if (!character) return 0;
+    const result = levelCharacter(character, gainExp);
+    setCharacter(result.character);
+    return result.leveled;
+  }
+
+  function advanceQuest(id: number, amount = 1) {
+    setQuests((current) =>
+      current.map((quest) =>
+        quest.id === id && !quest.claimed
+          ? { ...quest, progress: Math.min(quest.target, quest.progress + amount) }
+          : quest,
+      ),
+    );
+  }
+
+  function runDungeon(stage: DungeonStage) {
+    if (!character) return;
     if (energy < DUNGEON_ENERGY_COST) {
-      notify("Energy habis. Ambil supply harian dulu.", "error");
+      notify("Energy tidak cukup untuk dungeon.", "error");
       return;
     }
-    const { victory, foundEquipment } = resolveDungeon(totalPower, stage.power);
+    const { win, lootDropped } = resolveDungeonRun(playerPower, stage.requiredPower);
     setEnergy((value) => value - DUNGEON_ENERGY_COST);
-    if (!victory) {
-      setGold((value) => value + Math.floor(stage.reward * 0.35));
-      notify("Party mundur, tapi membawa sebagian loot.", "info");
+    if (!win) {
+      setGold((value) => value + Math.floor(stage.rewardGold * 0.25));
+      notify("Dungeon gagal, tapi kamu membawa sedikit loot.", "info");
       return;
     }
-    setGold((value) => value + stage.reward);
-    setDiamond((value) => value + (stage.power >= 2800 ? 2 : 1));
-    if (foundEquipment) setEquipment((value) => [createEquipment(), ...value]);
-    notify(`Clear ${stage.name}: Gold, Diamond${foundEquipment ? ", Equipment" : ""}.`, "success");
+
+    const goldReward = Math.floor(stage.rewardGold * (1 + (pet?.goldBonus ?? 0) / 100));
+    const leveled = applyExp(stage.rewardExp);
+    setGold((value) => value + goldReward);
+    setDiamond((value) => value + (stage.bossStage ? 2 : 0));
+    if (lootDropped || stage.bossStage) setInventory((items) => [createEquipment(), ...items]);
+    advanceQuest(1);
+    if (stage.bossStage) advanceQuest(2);
+    notify(
+      `${stage.name} clear: +${stage.rewardExp} EXP${leveled ? `, Level +${leveled}` : ""}.`,
+      "success",
+    );
   }
 
-  function attackBoss() {
-    if (energy < BOSS_ENERGY_COST) {
-      notify("Butuh lebih banyak Energy untuk Nest Raid.", "error");
+  function runNest(raid: (typeof nestRaids)[number]) {
+    if (!character) return;
+    if (energy < NEST_ENERGY_COST) {
+      notify("Energy tidak cukup untuk Nest.", "error");
       return;
     }
-    const damage = rollBossDamage(totalPower);
-    const nextHp = Math.max(0, boss.hp - damage);
-    setEnergy((value) => value - BOSS_ENERGY_COST);
-    setBoss((value) => ({ ...value, hp: nextHp }));
-    if (nextHp === 0) {
-      setGold((value) => value + 1_800);
-      setDiamond((value) => value + 8);
-      setEquipment((value) => [createEquipment("Weapon"), ...value]);
-      setHeroes((value) => value.map((hero, index) => (index === 0 ? { ...hero, shards: hero.shards + 15 } : hero)));
-      notify("World Boss tumbang: Gold, Diamond, Equipment, Hero Shard.", "success");
-    } else {
-      notify(`${boss.name} menerima ${compactNumber(damage)} damage.`, "info");
+    const damage = rollNestDamage(playerPower);
+    const win = damage >= raid.requiredPower * 2 || playerPower >= raid.requiredPower;
+    setEnergy((value) => value - NEST_ENERGY_COST);
+    if (!win) {
+      notify(`${raid.name} terlalu kuat. Damage ${compactNumber(damage)}.`, "error");
+      return;
     }
+    const leveled = applyExp(raid.rewardExp);
+    setGold((value) => value + raid.rewardGold);
+    setDiamond((value) => value + 3);
+    setInventory((items) => [createEquipment("Ring"), createEquipment("Necklace"), ...items]);
+    advanceQuest(3);
+    notify(`${raid.name} clear: Epic Gear, Dragon Jade, Gold${leveled ? ", Level Up" : ""}.`, "success");
   }
 
-  function resetBoss() {
-    setBoss(createBoss());
-    notify("Nest Raid baru dibuka.", "success");
+  function claimQuest(quest: Quest) {
+    if (quest.progress < quest.target || quest.claimed) return;
+    const leveled = applyExp(quest.rewardExp);
+    setGold((value) => value + quest.rewardGold);
+    setQuests((current) =>
+      current.map((item) => (item.id === quest.id ? { ...item, claimed: true } : item)),
+    );
+    notify(`Quest reward diklaim${leveled ? " dan level naik" : ""}.`, "success");
+  }
+
+  function equipItem(item: Equipment) {
+    setEquipment((current) => ({ ...current, [item.slot]: item }));
+    setInventory((items) => items.filter((candidate) => candidate.id !== item.id));
+    notify(`${item.name} equipped.`, "success");
+  }
+
+  function trainSkill(skill: Skill) {
+    if (gold < 250) {
+      notify("Gold tidak cukup untuk upgrade skill.", "error");
+      return;
+    }
+    setGold((value) => value - 250);
+    setSkills((current) =>
+      current.map((item) =>
+        item.name === skill.name
+          ? { ...item, level: item.level + 1, damage: item.damage + 55 }
+          : item,
+      ),
+    );
+    notify(`${skill.name} naik level.`, "success");
+  }
+
+  function advanceJob(job: Job) {
+    if (!character || character.level < job.levelRequired) return;
+    setCharacter({ ...character, job: job.name, power: character.power + 180, attack: character.attack + 35 });
+    notify(`Job Advancement: ${job.name}.`, "success");
   }
 
   function enterArena() {
-    if (!bestHero) return;
-    const { win, rankGain } = resolveArena(totalPower);
+    if (!character) return;
+    const { win, rankGain } = resolveArenaRun(playerPower);
     if (win) {
-      setArenaRank((value) => Math.max(1, value - rankGain));
+      setArenaRank((rank) => Math.max(1, rank - rankGain));
       setGold((value) => value + 260);
-      notify(`${bestHero.name} menang di PvP Arena.`, "success");
+      notify("PvP menang. Ranking naik.", "success");
     } else {
-      setArenaRank((value) => value + 40);
-      notify("Arena kalah tipis. Upgrade party lalu coba lagi.", "error");
+      setArenaRank((rank) => rank + 35);
+      notify("PvP kalah tipis. Upgrade gear dan skill.", "error");
     }
   }
 
@@ -477,7 +719,7 @@ export default function DragonNestMiniApp() {
       name: clean,
       tag: clean.slice(0, 4).toUpperCase(),
       level: 1,
-      members: 18,
+      members: 12,
       donation: 0,
       raidDamage: 0,
     });
@@ -506,273 +748,380 @@ export default function DragonNestMiniApp() {
 
   function guildRaid() {
     if (!guild) return;
-    const damage = rollGuildRaidDamage(totalPower);
+    const damage = Math.floor(playerPower * 1.35);
     setGuild((value) => (value ? { ...value, raidDamage: value.raidDamage + damage } : value));
-    setGold((value) => value + 220);
-    notify(`Guild Raid memberi ${compactNumber(damage)} damage.`, "success");
-  }
-
-  function buyMarketOffer(offer: (typeof marketOffers)[number]) {
-    if (offer.diamond) {
-      if (diamond < offer.price) {
-        notify("Diamond tidak cukup.", "error");
-        return;
-      }
-      setDiamond((value) => value - offer.price);
-    } else {
-      if (gold < offer.price) {
-        notify("Gold tidak cukup.", "error");
-        return;
-      }
-      setGold((value) => value - offer.price);
-    }
-    setEquipment((value) => [createEquipment(), ...value]);
-    notify(`${offer.name} dibeli.`, "success");
+    setGold((value) => value + 180);
+    notify(`Guild Raid damage ${compactNumber(damage)}.`, "success");
   }
 
   function claimSupply() {
     setEnergy((value) => Math.min(100, value + 30));
-    setGold((value) => value + 420);
+    setGold((value) => value + 350);
     notify("Supply harian diklaim.", "success");
   }
 
-  function renderScreen() {
-    if (screen === "home") {
-      return (
-        <>
-          <section style={heroPanel}>
-            <div>
-              <div style={{ color: "#67e8f9", fontWeight: 900, fontSize: 12 }}>
-                Dragon Nest
-              </div>
-              <h1 style={{ margin: "4px 0", fontSize: 28, lineHeight: 1.05 }}>
-                Mini App Telegram
-              </h1>
-              <div style={{ color: "#cbd5e1", fontSize: 13 }}>
-                Party Power {compactNumber(totalPower)} • {heroes.length} Heroes
-              </div>
+  function finishTutorial() {
+    setTutorialDone(true);
+    notify("Tutorial selesai. Prairie Town terbuka.", "success");
+  }
+
+  function renderCharacterCreate() {
+    return (
+      <section style={panel}>
+        <div style={cutscenePanel}>
+          <div style={{ color: "#67e8f9", fontWeight: 900, fontSize: 12 }}>Welcome Adventurer</div>
+          <h1 style={{ margin: "4px 0", fontSize: 26, lineHeight: 1.05 }}>Choose Your Class</h1>
+          <div style={{ color: "#cbd5e1", fontSize: 13 }}>Create Your Hero, then begin the tutorial.</div>
+        </div>
+
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+          <input
+            value={nameInput}
+            onChange={(event) => setNameInput(event.target.value)}
+            placeholder="Character name"
+            style={inputStyle}
+          />
+
+          <div style={classGrid}>
+            {CLASS_LIST.map((className) => (
+              <button
+                key={className}
+                onClick={() => setSelectedClass(className)}
+                style={{
+                  ...selectButton,
+                  borderColor: selectedClass === className ? "#67e8f9" : "rgba(255,255,255,.12)",
+                  background: selectedClass === className ? "#082f49" : "#111827",
+                }}
+              >
+                <b>{className}</b>
+                <span>{classStats[className].traits.join(" • ")}</span>
+              </button>
+            ))}
+          </div>
+
+          <div style={twoColumn}>
+            <select value={selectedGender} onChange={(event) => setSelectedGender(event.target.value as Gender)} style={inputStyle}>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+            <select value={hair} onChange={(event) => setHair(event.target.value)} style={inputStyle}>
+              <option>Short</option>
+              <option>Long</option>
+              <option>Ponytail</option>
+              <option>Silver</option>
+            </select>
+            <select value={face} onChange={(event) => setFace(event.target.value)} style={inputStyle}>
+              <option>Calm</option>
+              <option>Brave</option>
+              <option>Sharp</option>
+              <option>Bright</option>
+            </select>
+            <select value={costume} onChange={(event) => setCostume(event.target.value)} style={inputStyle}>
+              <option>Academy</option>
+              <option>Mercenary</option>
+              <option>Royal</option>
+              <option>Shadow</option>
+            </select>
+          </div>
+
+          <Button onClick={createCharacter}>Create Character</Button>
+        </div>
+      </section>
+    );
+  }
+
+  function renderHome() {
+    if (!character) return renderCharacterCreate();
+    return (
+      <>
+        <section style={heroPanel}>
+          <div>
+            <div style={{ color: "#67e8f9", fontWeight: 900, fontSize: 12 }}>
+              {character.gender} {character.class}
             </div>
-            <div style={{ fontSize: 54, lineHeight: 1 }}>🐉</div>
-          </section>
+            <h1 style={{ margin: "4px 0", fontSize: 26, lineHeight: 1.05 }}>{character.name}</h1>
+            <div style={{ color: "#cbd5e1", fontSize: 13 }}>
+              Lv {character.level} {character.job} • Power {compactNumber(playerPower)}
+            </div>
+          </div>
+          <div style={{ fontSize: 50, lineHeight: 1 }}>{character.class === "Warrior" ? "🗡️" : character.class === "Archer" ? "🏹" : character.class === "Sorceress" ? "🔮" : character.class === "Cleric" ? "🛡️" : "🗡️"}</div>
+        </section>
 
-          <section style={gridThree}>
-            <StatPill label="Gold" value={`🪙 ${compactNumber(gold)}`} />
-            <StatPill label="Diamond" value={`💎 ${compactNumber(diamond)}`} />
-            <StatPill label="Energy" value={`⚡ ${energy}/100`} />
-          </section>
+        <section style={gridThree}>
+          <StatPill label="Gold" value={`🪙 ${compactNumber(gold)}`} />
+          <StatPill label="Diamond" value={`💎 ${diamond}`} />
+          <StatPill label="Energy" value={`⚡ ${energy}/100`} />
+        </section>
 
+        <section style={panel}>
+          <div style={sectionTitle}>Character Progression</div>
+          <ProgressBar value={expPercent} />
+          <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 8 }}>
+            EXP {character.exp}/{expToNextLevel(character.level)} • HP {compactNumber(character.hp + (pet?.hpBonus ?? 0))} • ATK {compactNumber(character.attack + (pet?.attackBonus ?? 0))}
+          </div>
+        </section>
+
+        {!tutorialDone && (
           <section style={panel}>
-            <div style={sectionTitle}>Quick Actions</div>
-            <div style={actionGrid}>
-              <Button onClick={() => setScreen("dungeon")}>⚔️ Adventure</Button>
-              <Button onClick={() => setScreen("boss")}>🐉 Nest Raid</Button>
-              <Button onClick={() => setScreen("summon")}>🎁 Hero Summon</Button>
-              <Button onClick={claimSupply} tone="quiet">⚡ Claim Supply</Button>
+            <div style={sectionTitle}>Tutorial</div>
+            <div style={{ color: "#cbd5e1", fontSize: 13, marginBottom: 10 }}>
+              Captain Deckard gives you a starter weapon and sends you to Prairie Town Stage 1.
             </div>
+            <Button onClick={finishTutorial}>Start Adventure</Button>
           </section>
+        )}
 
-          {bestHero && (
-            <section style={panel}>
-              <div style={sectionTitle}>Lead Hero</div>
-              <HeroCard hero={bestHero} />
-            </section>
-          )}
-        </>
-      );
-    }
-
-    if (screen === "summon") {
-      return (
         <section style={panel}>
-          <div style={sectionTitle}>🎁 Hero Summon</div>
-          <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 12 }}>
-            Cost {SUMMON_COST} Gold • Rates: UR 5%, SSR 15%, SR 42%, R 38%
-          </div>
-          <Button onClick={summonHero} disabled={gold < SUMMON_COST}>
-            Summon Hero
-          </Button>
-          {summonResult && (
-            <div style={{ marginTop: 12 }}>
-              <HeroCard hero={summonResult} />
-            </div>
-          )}
-        </section>
-      );
-    }
-
-    if (screen === "heroes") {
-      return (
-        <section style={panel}>
-          <div style={sectionTitle}>🦸 Heroes</div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {heroes.map((hero) => (
-              <HeroCard key={hero.id} hero={hero} />
-            ))}
-          </div>
-        </section>
-      );
-    }
-
-    if (screen === "dungeon") {
-      return (
-        <section style={panel}>
-          <div style={sectionTitle}>⚔️ Adventure Dungeon</div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {dungeonStages.map((stage) => (
-              <div key={stage.name} style={rowCard}>
+          <div style={sectionTitle}>Quests</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {quests.map((quest) => (
+              <div key={quest.id} style={rowCard}>
                 <div>
-                  <div style={{ color: "#f8fafc", fontWeight: 900 }}>
-                    {elementIcon[stage.element]} {stage.name}
-                  </div>
+                  <div style={{ color: "#f8fafc", fontWeight: 900 }}>{quest.title}</div>
                   <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    Req {compactNumber(stage.power)} Power • Reward {stage.reward} Gold
+                    {quest.progress}/{quest.target} • {quest.rewardGold} Gold • {quest.rewardExp} EXP
                   </div>
                 </div>
-                <button onClick={() => runDungeon(stage)} style={miniButton}>
-                  Run
+                <button
+                  onClick={() => claimQuest(quest)}
+                  disabled={quest.progress < quest.target || quest.claimed}
+                  style={miniButton}
+                >
+                  {quest.claimed ? "Done" : "Claim"}
                 </button>
               </div>
             ))}
           </div>
         </section>
-      );
-    }
 
-    if (screen === "boss") {
-      const hpPct = Math.round((boss.hp / boss.maxHp) * 100);
-      return (
         <section style={panel}>
-          <div style={sectionTitle}>🐉 World Boss</div>
-          <div style={{ ...heroPanel, marginBottom: 12 }}>
-            <div>
-              <div style={{ color: rarityColor.UR, fontWeight: 900, fontSize: 22 }}>
-                {boss.name}
-              </div>
-              <div style={{ color: "#cbd5e1", fontSize: 13 }}>
-                {elementIcon[boss.element]} {boss.element} • Gold, Diamond, Equipment, Hero Shard
-              </div>
-            </div>
-            <div style={{ fontSize: 44 }}>🐲</div>
-          </div>
-          <div style={barTrack}>
-            <div style={{ ...barFill, width: `${hpPct}%` }} />
-          </div>
-          <div style={{ color: "#94a3b8", fontSize: 12, margin: "8px 0 12px" }}>
-            HP {compactNumber(boss.hp)} / {compactNumber(boss.maxHp)}
-          </div>
+          <div style={sectionTitle}>Quick Actions</div>
           <div style={actionGrid}>
-            <Button onClick={attackBoss} disabled={boss.hp === 0}>
-              ⚔️ Attack Raid
-            </Button>
-            <Button onClick={resetBoss} tone="quiet">
-              🔄 New Boss
-            </Button>
+            <Button onClick={() => setScreen("dungeon")}>⚔️ Dungeon</Button>
+            <Button onClick={() => setScreen("inventory")} tone="quiet">🎒 Equipment</Button>
+            <Button onClick={() => setScreen("nest")}>🐉 Nest</Button>
+            <Button onClick={claimSupply} tone="quiet">⚡ Supply</Button>
           </div>
         </section>
-      );
-    }
+      </>
+    );
+  }
 
-    if (screen === "arena") {
-      return (
-        <section style={panel}>
-          <div style={sectionTitle}>🏆 PvP Arena</div>
-          <section style={gridThree}>
-            <StatPill label="Rank" value={`#${arenaRank}`} />
-            <StatPill label="Power" value={compactNumber(totalPower)} />
-            <StatPill label="Team" value={`${heroes.length}/5`} />
-          </section>
-          <Button onClick={enterArena}>Start Match</Button>
-        </section>
-      );
-    }
-
-    if (screen === "guild") {
-      return (
-        <section style={panel}>
-          <div style={sectionTitle}>🛡️ Guild</div>
-          {!guild ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              <input
-                value={guildName}
-                onChange={(event) => setGuildName(event.target.value)}
-                placeholder="Guild name"
-                style={inputStyle}
-              />
-              <Button onClick={createGuild}>Create Guild</Button>
+  function renderDungeon() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>Story Dungeon</div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {dungeonStages.map((stage) => (
+            <div key={`${stage.chapter}-${stage.stage}`} style={rowCard}>
+              <div>
+                <div style={{ color: stage.bossStage ? "#fbbf24" : "#f8fafc", fontWeight: 900 }}>
+                  Chapter {stage.chapter}: {stage.name}
+                </div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  {stage.area} • Req {compactNumber(stage.requiredPower)} Power • +{stage.rewardExp} EXP
+                </div>
+              </div>
+              <button onClick={() => runDungeon(stage)} style={miniButton}>
+                Run
+              </button>
             </div>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={rowCard}>
-                <div>
-                  <div style={{ color: "#f8fafc", fontWeight: 900 }}>
-                    {guild.name} [{guild.tag}]
-                  </div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    Level {guild.level} • {guild.members} members
-                  </div>
-                </div>
-                <div style={{ color: "#facc15", fontWeight: 900 }}>
-                  {compactNumber(guild.donation)}
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderNest() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>Nest</div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {nestRaids.map((raid) => (
+            <div key={raid.name} style={rowCard}>
+              <div>
+                <div style={{ color: "#f8fafc", fontWeight: 900 }}>{raid.name}</div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  Req {compactNumber(raid.requiredPower)} • Epic Gear, Dragon Jade, Gold
                 </div>
               </div>
-              <div style={actionGrid}>
-                <Button onClick={guildRaid}>Guild Raid</Button>
-                <Button onClick={donateGuild} tone="quiet">Guild Donation</Button>
-              </div>
-              <div style={rowCard}>
-                <div>
-                  <div style={{ color: "#f8fafc", fontWeight: 900 }}>Guild Shop</div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                    Member discount equipment supply
-                  </div>
+              <button onClick={() => runNest(raid)} style={miniButton}>
+                Raid
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderInventory() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>Equipment</div>
+        <div style={slotGrid}>
+          {equipmentSlots.map((slot) => {
+            const item = equipment[slot];
+            return (
+              <div key={slot} style={statPill}>
+                <div style={{ color: "#94a3b8", fontSize: 11 }}>{slot}</div>
+                <div style={{ color: item ? rarityColor[item.rarity] : "#64748b", fontWeight: 900 }}>
+                  {item ? item.name : "Empty"}
                 </div>
-                <button onClick={() => buyMarketOffer(marketOffers[0])} style={miniButton}>
-                  Buy
-                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ ...sectionTitle, marginTop: 16 }}>Inventory</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {inventory.length === 0 && <div style={emptyState}>No loot yet. Run dungeon or Nest.</div>}
+          {inventory.map((item) => (
+            <div key={item.id} style={rowCard}>
+              <div>
+                <div style={{ color: rarityColor[item.rarity], fontWeight: 900 }}>{item.name}</div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  {item.slot} • +{item.power} Power • +{item.attack} ATK
+                </div>
+              </div>
+              <button onClick={() => equipItem(item)} style={miniButton}>
+                Equip
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {pet && (
+          <>
+            <div style={{ ...sectionTitle, marginTop: 16 }}>Pet</div>
+            <div style={rowCard}>
+              <div>
+                <div style={{ color: rarityColor[pet.rarity], fontWeight: 900 }}>{pet.name}</div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  +{pet.powerBonus} Power • +{pet.attackBonus} ATK • +{pet.hpBonus} HP • Gold +{pet.goldBonus}%
+                </div>
               </div>
             </div>
-          )}
-        </section>
-      );
-    }
+          </>
+        )}
+      </section>
+    );
+  }
 
-    if (screen === "market") {
-      return (
-        <section style={panel}>
-          <div style={sectionTitle}>🛒 Market</div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {marketOffers.map((offer) => (
-              <div key={offer.name} style={rowCard}>
-                <div>
-                  <div style={{ color: "#f8fafc", fontWeight: 900 }}>{offer.name}</div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>{offer.gives}</div>
+  function renderSkills() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>Skills & Job Advancement</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {skills.map((skill) => (
+            <div key={skill.name} style={rowCard}>
+              <div>
+                <div style={{ color: "#f8fafc", fontWeight: 900 }}>{skill.name}</div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  Lv {skill.level} • Damage {skill.damage}
                 </div>
-                <button onClick={() => buyMarketOffer(offer)} style={miniButton}>
-                  {offer.diamond ? "💎" : "🪙"} {offer.price}
+              </div>
+              <button onClick={() => trainSkill(skill)} style={miniButton}>
+                Train
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ ...sectionTitle, marginTop: 16 }}>Job Advancement</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {character &&
+            jobTree[character.class].map((job) => (
+              <div key={job.name} style={rowCard}>
+                <div>
+                  <div style={{ color: availableJobs.some((item) => item.name === job.name) ? "#f8fafc" : "#64748b", fontWeight: 900 }}>
+                    {job.name}
+                  </div>
+                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Level Required {job.levelRequired}</div>
+                </div>
+                <button
+                  onClick={() => advanceJob(job)}
+                  disabled={!availableJobs.some((item) => item.name === job.name)}
+                  style={miniButton}
+                >
+                  Advance
                 </button>
               </div>
             ))}
-          </div>
-          {equipment.length > 0 && (
-            <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
-              <div style={sectionTitle}>Equipment</div>
-              {equipment.slice(0, 5).map((item) => (
-                <div key={item.id} style={rowCard}>
-                  <div>
-                    <div style={{ color: rarityColor[item.rarity], fontWeight: 900 }}>
-                      {item.name}
-                    </div>
-                    <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                      {item.slot} • +{item.bonusPower} Power
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderArena() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>PvP Arena</div>
+        <section style={gridThree}>
+          <StatPill label="Rank" value={`#${arenaRank}`} />
+          <StatPill label="Power" value={compactNumber(playerPower)} />
+          <StatPill label="Class" value={character?.job ?? "-"} />
         </section>
-      );
-    }
+        <Button onClick={enterArena}>Start Match</Button>
+      </section>
+    );
+  }
+
+  function renderGuild() {
+    return (
+      <section style={panel}>
+        <div style={sectionTitle}>Guild</div>
+        {!guild ? (
+          <div style={{ display: "grid", gap: 10 }}>
+            <input
+              value={guildName}
+              onChange={(event) => setGuildName(event.target.value)}
+              placeholder="Guild name"
+              style={inputStyle}
+            />
+            <Button onClick={createGuild}>Create Guild</Button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={rowCard}>
+              <div>
+                <div style={{ color: "#f8fafc", fontWeight: 900 }}>
+                  {guild.name} [{guild.tag}]
+                </div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                  Level {guild.level} • {guild.members} members • Damage {compactNumber(guild.raidDamage)}
+                </div>
+              </div>
+            </div>
+            <div style={actionGrid}>
+              <Button onClick={guildRaid}>Guild Raid</Button>
+              <Button onClick={donateGuild} tone="quiet">Guild Donation</Button>
+            </div>
+            <div style={rowCard}>
+              <div>
+                <div style={{ color: "#f8fafc", fontWeight: 900 }}>Guild Shop</div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>Dragon Jade, guild potion, gear chest</div>
+              </div>
+              <button onClick={() => setInventory((items) => [createEquipment(), ...items])} style={miniButton}>
+                Open
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function renderScreen() {
+    if (!character || screen === "character-create") return renderCharacterCreate();
+    if (screen === "home") return renderHome();
+    if (screen === "dungeon") return renderDungeon();
+    if (screen === "nest") return renderNest();
+    if (screen === "inventory") return renderInventory();
+    if (screen === "skills") return renderSkills();
+    if (screen === "arena") return renderArena();
+    if (screen === "guild") return renderGuild();
+    return renderHome();
   }
 
   return (
@@ -780,9 +1129,7 @@ export default function DragonNestMiniApp() {
       <div style={phoneFrame}>
         <header style={topBar}>
           <div>
-            <div style={{ fontSize: 11, color: "#38bdf8", fontWeight: 900 }}>
-              Telegram Mini App
-            </div>
+            <div style={{ fontSize: 11, color: "#38bdf8", fontWeight: 900 }}>Character RPG</div>
             <div style={{ color: "#f8fafc", fontWeight: 950 }}>Dragon Nest</div>
           </div>
           <div style={{ textAlign: "right", color: "#cbd5e1", fontSize: 12 }}>
@@ -792,24 +1139,26 @@ export default function DragonNestMiniApp() {
 
         <div style={content}>{renderScreen()}</div>
 
-        <nav style={bottomNav}>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setScreen(item.id)}
-              aria-label={item.label}
-              title={item.label}
-              style={{
-                ...navButton,
-                color: screen === item.id ? "#67e8f9" : "#94a3b8",
-                background: screen === item.id ? "#082f49" : "transparent",
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{item.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 800 }}>{item.label}</span>
-            </button>
-          ))}
-        </nav>
+        {character && (
+          <nav style={bottomNav}>
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setScreen(item.id)}
+                aria-label={item.label}
+                title={item.label}
+                style={{
+                  ...navButton,
+                  color: screen === item.id ? "#67e8f9" : "#94a3b8",
+                  background: screen === item.id ? "#082f49" : "transparent",
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 800 }}>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
 
         {toast && (
           <div
@@ -871,23 +1220,30 @@ const content: React.CSSProperties = {
   paddingBottom: 96,
 };
 
-const heroPanel: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 14,
-  background: "linear-gradient(135deg, #164e63, #4c1d95 56%, #7f1d1d)",
-  border: "1px solid rgba(255,255,255,.16)",
-  borderRadius: 8,
-  padding: 16,
-};
-
 const panel: React.CSSProperties = {
   background: "#0b1220",
   border: "1px solid rgba(255,255,255,.11)",
   borderRadius: 8,
   padding: 14,
   marginTop: 12,
+};
+
+const cutscenePanel: React.CSSProperties = {
+  background: "linear-gradient(135deg, #134e4a, #312e81 56%, #7f1d1d)",
+  border: "1px solid rgba(255,255,255,.16)",
+  borderRadius: 8,
+  padding: 16,
+};
+
+const heroPanel: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 14,
+  background: "linear-gradient(135deg, #164e63, #1e3a8a 52%, #4c1d95)",
+  border: "1px solid rgba(255,255,255,.16)",
+  borderRadius: 8,
+  padding: 16,
 };
 
 const sectionTitle: React.CSSProperties = {
@@ -905,10 +1261,35 @@ const gridThree: React.CSSProperties = {
   marginBottom: 12,
 };
 
+const twoColumn: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
 const actionGrid: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 10,
+};
+
+const classGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const slotGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const statPill: React.CSSProperties = {
+  background: "#111827",
+  border: "1px solid rgba(255,255,255,.1)",
+  borderRadius: 8,
+  padding: "8px 10px",
 };
 
 const rowCard: React.CSSProperties = {
@@ -920,6 +1301,20 @@ const rowCard: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,.1)",
   borderRadius: 8,
   padding: 12,
+};
+
+const selectButton: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,.12)",
+  borderRadius: 8,
+  color: "#f8fafc",
+  padding: 10,
+  minHeight: 78,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  gap: 5,
+  textAlign: "left",
+  fontSize: 12,
 };
 
 const miniButton: React.CSSProperties = {
@@ -943,6 +1338,15 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+const emptyState: React.CSSProperties = {
+  color: "#94a3b8",
+  background: "#111827",
+  border: "1px dashed rgba(255,255,255,.14)",
+  borderRadius: 8,
+  padding: 12,
+  fontSize: 13,
+};
+
 const barTrack: React.CSSProperties = {
   height: 12,
   background: "#111827",
@@ -953,7 +1357,7 @@ const barTrack: React.CSSProperties = {
 
 const barFill: React.CSSProperties = {
   height: "100%",
-  background: "linear-gradient(90deg, #ef4444, #f59e0b)",
+  background: "linear-gradient(90deg, #22c55e, #38bdf8)",
   borderRadius: 999,
   transition: "width .25s ease",
 };
