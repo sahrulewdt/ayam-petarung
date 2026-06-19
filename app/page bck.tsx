@@ -20,7 +20,7 @@ interface GridCell {
   id: number;
 }
 
-type Screen = "main" | "farm" | "dig" | "spin" | "tasks" | "shop" | "leaderboard";
+type Screen = "main" | "farm" | "dig" | "spin" | "tasks" | "shop" | "leaderboard" | "nft" | "arena" | "breed";
 
 interface LeaderEntry {
   name: string;
@@ -56,6 +56,42 @@ interface SpinReward {
   worms: number;
   boost?: boolean;
   prob: number;
+}
+
+// ─── NFT TYPES ────────────────────────────────────────────────────────────────
+type Element = "Api" | "Air" | "Petir" | "Tanah" | "Angin";
+type NFTRarity = "Common" | "Rare" | "Epic" | "Legendary";
+type EquipmentType = "Armor" | "Cakar" | "Sayap" | "Helm";
+type ArenaRank = "Bronze" | "Silver" | "Gold" | "Diamond";
+
+interface NFTStat {
+  hp: number;
+  attack: number;
+  speed: number;
+  critRate: number;
+}
+
+interface NFTChicken {
+  id: number;
+  name: string;
+  emoji: string;
+  element: Element;
+  rarity: NFTRarity;
+  stats: NFTStat;
+  breedCount: number;
+  skills: string[];
+}
+
+interface NFTEquipment {
+  id: number;
+  type: EquipmentType;
+  rarity: NFTRarity;
+  statBonus: Partial<NFTStat>;
+}
+
+interface BattleLog {
+  round: number;
+  msg: string;
 }
 
 interface DigReward {
@@ -130,6 +166,44 @@ const DAILY_TASKS: TaskDef[] = [
 ];
 
 const CHECKIN_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
+
+// ─── NFT CONSTANTS ────────────────────────────────────────────────────────────
+const ELEMENTS: Element[] = ["Api", "Air", "Petir", "Tanah", "Angin"];
+const ELEMENT_EMOJI: Record<Element, string> = {
+  Api: "🔥", Air: "💧", Petir: "⚡", Tanah: "🌍", Angin: "🌪️",
+};
+const ELEMENT_COLOR: Record<Element, string> = {
+  Api: "#ef4444", Air: "#60a5fa", Petir: "#facc15", Tanah: "#a37c3a", Angin: "#86efac",
+};
+// Counter: key beats value
+const ELEMENT_COUNTER: Record<Element, Element> = {
+  Api: "Angin", Angin: "Tanah", Tanah: "Petir", Petir: "Air", Air: "Api",
+};
+
+const NFT_RARITY_COLOR: Record<NFTRarity, string> = {
+  Common: "#9ca3af", Rare: "#60a5fa", Epic: "#a78bfa", Legendary: "#fbbf24",
+};
+const NFT_RARITY_PROB = [
+  { rarity: "Common" as NFTRarity,   prob: 60 },
+  { rarity: "Rare" as NFTRarity,     prob: 25 },
+  { rarity: "Epic" as NFTRarity,     prob: 10 },
+  { rarity: "Legendary" as NFTRarity, prob: 5  },
+];
+
+const ARENA_RANKS: { rank: ArenaRank; emoji: string; minPts: number; color: string }[] = [
+  { rank: "Bronze",  emoji: "🥉", minPts: 0,   color: "#c2410c" },
+  { rank: "Silver",  emoji: "🥈", minPts: 100, color: "#9ca3af" },
+  { rank: "Gold",    emoji: "🥇", minPts: 300, color: "#fbbf24" },
+  { rank: "Diamond", emoji: "💎", minPts: 700, color: "#60a5fa" },
+];
+
+const EQUIPMENT_EMOJI: Record<EquipmentType, string> = {
+  Armor: "🛡️", Cakar: "🦅", Sayap: "🪶", Helm: "⛑️",
+};
+
+const BREED_EGG_COST   = 100000;
+const BREED_TOKEN_COST = 10;
+const NFT_MINT_COST    = 5000; // eggs to mint an NFT chicken
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function weightedPick<T extends { prob: number }>(pool: T[]): T {
@@ -322,6 +396,18 @@ export default function Home() {
   const [playerName, setPlayerName]   = useState("");
   const [nameInput, setNameInput]     = useState("");
 
+  // ── NFT State ──
+  const [nftChickens, setNftChickens]   = useState<NFTChicken[]>([]);
+  const [nftEquipment, setNftEquipment] = useState<NFTEquipment[]>([]);
+  const [tokens, setTokens]             = useState(0);
+  const [arenaPoints, setArenaPoints]   = useState(0);
+  const [battleResult, setBattleResult] = useState<{ win: boolean; logs: BattleLog[] } | null>(null);
+  const [isBattling, setIsBattling]     = useState(false);
+  const [selectedNFT, setSelectedNFT]   = useState<number | null>(null); // id of selected NFT
+  const [breedA, setBreedA]             = useState<number | null>(null);
+  const [breedB, setBreedB]             = useState<number | null>(null);
+  const [breedResult, setBreedResult]   = useState<NFTChicken | null>(null);
+
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const bgStopRef    = useRef<(() => void) | null>(null);
   const floatId      = useRef(0);
@@ -367,6 +453,10 @@ export default function Home() {
     if (typeof s.taps === "number")         setTaps(s.taps);
     if (typeof s.totalEarned === "number")  setTotalEarned(s.totalEarned);
     if (typeof s.playerName === "string")   setPlayerName(s.playerName);
+    if (Array.isArray(s.nftChickens))       setNftChickens(s.nftChickens as NFTChicken[]);
+    if (Array.isArray(s.nftEquipment))      setNftEquipment(s.nftEquipment as NFTEquipment[]);
+    if (typeof s.tokens === "number")       setTokens(s.tokens);
+    if (typeof s.arenaPoints === "number")  setArenaPoints(s.arenaPoints);
     
     try {
       const lb = localStorage.getItem(LEADER_KEY);
@@ -382,9 +472,10 @@ export default function Home() {
         autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd,
         spinUsedToday, lastSpinDate, taskProgress, taskClaimed,
         checkinDay, checkinDate, taps, totalEarned, playerName,
+        nftChickens, nftEquipment, tokens, arenaPoints,
       }));
     } catch {}
-  }, [eggs, worms, cekers, grid, boostEndTime, autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName]);
+  }, [eggs, worms, cekers, grid, boostEndTime, autoMergeTix, autoGenTix, autoMergeEnd, autoMergeCD, autoGenEnd, spinUsedToday, lastSpinDate, taskProgress, taskClaimed, checkinDay, checkinDate, taps, totalEarned, playerName, nftChickens, nftEquipment, tokens, arenaPoints]);
 
   // ── Reset spin daily ──
   useEffect(() => {
@@ -766,6 +857,177 @@ export default function Home() {
     showToast("Leaderboard direset!", "info");
   }
 
+  // ── NFT Helpers ──
+  function randomStat(rarity: NFTRarity): NFTStat {
+    const base = { Common: 1, Rare: 1.3, Epic: 1.7, Legendary: 2.5 }[rarity];
+    return {
+      hp:       Math.floor((50 + Math.random() * 50) * base),
+      attack:   Math.floor((30 + Math.random() * 40) * base),
+      speed:    Math.floor((20 + Math.random() * 30) * base),
+      critRate: Math.floor((5  + Math.random() * 20) * base),
+    };
+  }
+
+  function randomSkills(rarity: NFTRarity): string[] {
+    const pool = ["Pecuk Kilat ⚡", "Sayap Badai 🌪️", "Taji Api 🔥", "Pukulan Bumi 🌍", "Arus Deras 💧",
+                  "Terbang Tinggi 🦅", "Cakar Baja 🦾", "Aura Legenda 👑", "Mata Elang 👁️", "Lari Angin 💨"];
+    const count = { Common: 1, Rare: 2, Epic: 3, Legendary: 4 }[rarity];
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  }
+
+  function mintNFT() {
+    if (eggs < NFT_MINT_COST) { showToast(`Butuh ${NFT_MINT_COST.toLocaleString()} 🥚!`, "err"); return; }
+    const rarityPick = weightedPick(NFT_RARITY_PROB);
+    const element    = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    const tierSource = maxTierInGrid > 0 ? getTier(maxTierInGrid as TierId) : CHICKEN_TIERS[0];
+    const newNFT: NFTChicken = {
+      id:         Date.now(),
+      name:       tierSource.name,
+      emoji:      tierSource.emoji,
+      element,
+      rarity:     rarityPick.rarity,
+      stats:      randomStat(rarityPick.rarity),
+      breedCount: 0,
+      skills:     randomSkills(rarityPick.rarity),
+    };
+    setEggs(e => e - NFT_MINT_COST);
+    setNftChickens(prev => [...prev, newNFT]);
+    showToast(`NFT ${rarityPick.rarity} ${ELEMENT_EMOJI[element]} ${tierSource.name} berhasil di-mint! 🎉`, "success");
+  }
+
+  function burnNFT(id: number) {
+    setNftChickens(prev => prev.filter(n => n.id !== id));
+    setTokens(t => t + 2);
+    showToast("NFT dibakar! +2 Token 🔥", "info");
+  }
+
+  // ── Arena PvP ──
+  function getArenaRankInfo(): typeof ARENA_RANKS[0] {
+    return [...ARENA_RANKS].reverse().find(r => arenaPoints >= r.minPts) ?? ARENA_RANKS[0];
+  }
+
+  function doBattle(nftId: number) {
+    const attacker = nftChickens.find(n => n.id === nftId);
+    if (!attacker) return;
+    if (isBattling) return;
+    setIsBattling(true);
+    setBattleResult(null);
+
+    // Generate enemy NFT
+    const enemyRarity   = weightedPick(NFT_RARITY_PROB).rarity;
+    const enemyElement  = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    const enemy: NFTChicken = {
+      id: -1, name: "Rival", emoji: "🐓", element: enemyElement,
+      rarity: enemyRarity, stats: randomStat(enemyRarity), breedCount: 0, skills: [],
+    };
+
+    const logs: BattleLog[] = [];
+    let aHP = attacker.stats.hp;
+    let eHP = enemy.stats.hp;
+    let round = 1;
+
+    // Element counter multiplier
+    const aMult = ELEMENT_COUNTER[attacker.element] === enemy.element ? 1.5 : 1;
+    const eMult = ELEMENT_COUNTER[enemy.element] === attacker.element ? 1.5 : 1;
+
+    logs.push({ round: 0, msg: `⚔️ ${attacker.emoji} ${ELEMENT_EMOJI[attacker.element]} vs ${enemy.emoji} ${ELEMENT_EMOJI[enemy.element]}` });
+    if (aMult > 1) logs.push({ round: 0, msg: `✅ ${ELEMENT_EMOJI[attacker.element]} counter ${ELEMENT_EMOJI[enemy.element]}! ×1.5` });
+    if (eMult > 1) logs.push({ round: 0, msg: `⚠️ ${ELEMENT_EMOJI[enemy.element]} counter ${ELEMENT_EMOJI[attacker.element]}! ×1.5` });
+
+    while (aHP > 0 && eHP > 0 && round <= 10) {
+      const aCrit  = Math.random() * 100 < attacker.stats.critRate;
+      const eDmg   = Math.floor(attacker.stats.attack * aMult * (aCrit ? 2 : 1) * (0.85 + Math.random() * 0.3));
+      eHP -= eDmg;
+      logs.push({ round, msg: `R${round}: Kamu serang ${eDmg}💥${aCrit ? " CRIT!" : ""}` });
+      if (eHP <= 0) break;
+
+      const eCrit  = Math.random() * 100 < 10;
+      const pDmg   = Math.floor(enemy.stats.attack * eMult * (eCrit ? 2 : 1) * (0.85 + Math.random() * 0.3));
+      aHP -= pDmg;
+      logs.push({ round, msg: `R${round}: Rival serang ${pDmg}💥${eCrit ? " CRIT!" : ""}` });
+      round++;
+    }
+
+    const win = aHP > eHP;
+    const ptsDelta = win ? 25 : -15;
+    setArenaPoints(p => Math.max(0, p + ptsDelta));
+
+    // Rewards: 70% item, 30% token
+    if (win) {
+      if (Math.random() < 0.3) {
+        setTokens(t => t + 1);
+        logs.push({ round: 99, msg: "🏆 Menang! +1 Token 🪙" });
+      } else {
+        const eggReward = Math.floor(200 + Math.random() * 300);
+        setEggs(e => e + eggReward);
+        setTotalEarned(t => t + eggReward);
+        logs.push({ round: 99, msg: `🏆 Menang! +${eggReward} 🥚 ${ptsDelta > 0 ? `+${ptsDelta} poin` : ""}` });
+      }
+      // Chance for NFT equipment drop
+      if (Math.random() < 0.1) {
+        const types: EquipmentType[] = ["Armor", "Cakar", "Sayap", "Helm"];
+        const r2 = weightedPick(NFT_RARITY_PROB);
+        const eq: NFTEquipment = {
+          id: Date.now(), type: types[Math.floor(Math.random() * types.length)],
+          rarity: r2.rarity, statBonus: { attack: Math.floor(5 * (r2.rarity === "Legendary" ? 3 : r2.rarity === "Epic" ? 2 : 1)) },
+        };
+        setNftEquipment(prev => [...prev, eq]);
+        logs.push({ round: 99, msg: `🎁 Drop! NFT ${EQUIPMENT_EMOJI[eq.type]} ${eq.type} (${eq.rarity})!` });
+      }
+    } else {
+      logs.push({ round: 99, msg: `💀 Kalah! ${ptsDelta} poin` });
+    }
+
+    setTimeout(() => {
+      setBattleResult({ win, logs });
+      setIsBattling(false);
+    }, 1200);
+  }
+
+  // ── Breeding ──
+  function doBreed() {
+    if (breedA === null || breedB === null) { showToast("Pilih 2 NFT untuk breed!", "err"); return; }
+    if (breedA === breedB) { showToast("Pilih 2 NFT berbeda!", "err"); return; }
+    const nA = nftChickens.find(n => n.id === breedA);
+    const nB = nftChickens.find(n => n.id === breedB);
+    if (!nA || !nB) { showToast("NFT tidak ditemukan!", "err"); return; }
+    if (nA.breedCount >= 5) { showToast(`${nA.name} sudah max breed (5x)!`, "err"); return; }
+    if (nB.breedCount >= 5) { showToast(`${nB.name} sudah max breed (5x)!`, "err"); return; }
+    if (eggs < BREED_EGG_COST) { showToast(`Butuh ${BREED_EGG_COST.toLocaleString()} 🥚!`, "err"); return; }
+    if (tokens < BREED_TOKEN_COST) { showToast(`Butuh ${BREED_TOKEN_COST} Token!`, "err"); return; }
+
+    // Burn resources
+    setEggs(e => e - BREED_EGG_COST);
+    setTokens(t => t - BREED_TOKEN_COST);
+
+    // Increment breed count
+    setNftChickens(prev => prev.map(n =>
+      (n.id === breedA || n.id === breedB) ? { ...n, breedCount: n.breedCount + 1 } : n
+    ));
+
+    const rarityPick = weightedPick(NFT_RARITY_PROB);
+    const parentEl   = Math.random() < 0.5 ? nA.element : nB.element;
+    const mutation   = Math.random() < 0.15; // 15% chance mutation to random element
+    const element    = mutation ? ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)] : parentEl;
+    const child: NFTChicken = {
+      id:         Date.now() + 1,
+      name:       `${nA.name}×${nB.name}`,
+      emoji:      Math.random() < 0.5 ? nA.emoji : nB.emoji,
+      element,
+      rarity:     rarityPick.rarity,
+      stats:      randomStat(rarityPick.rarity),
+      breedCount: 0,
+      skills:     randomSkills(rarityPick.rarity),
+    };
+
+    setNftChickens(prev => [...prev, child]);
+    setBreedResult(child);
+    setBreedA(null);
+    setBreedB(null);
+    showToast(`Breeding berhasil! ${rarityPick.rarity} ${ELEMENT_EMOJI[element]} lahir! 🥚`, "success");
+  }
+
   // ── Derived values ──
   const totalIdle = grid.reduce((s, c) => {
     if (!c) return s;
@@ -794,6 +1056,9 @@ export default function Home() {
     { key: "farm",        label: "Kandang",    emoji: "🐔", bg: "#1a3010", border: "#4a7a1a" },
     { key: "dig",         label: "Scratch",    emoji: "🐾", bg: "#1a2a10", border: "#4a7a1a" },
     { key: "spin",        label: "Spin",       emoji: "🎡", bg: "#0a1a3a", border: "#185fa5" },
+    { key: "nft",         label: "NFT",        emoji: "🃏", bg: "#1a0a3a", border: "#7c3aed" },
+    { key: "arena",       label: "Arena",      emoji: "⚔️", bg: "#3a0a0a", border: "#ef4444" },
+    { key: "breed",       label: "Breed",      emoji: "🥚", bg: "#0a2a2a", border: "#059669" },
     { key: "tasks",       label: "Misi",       emoji: "📋", bg: "#3a1a10", border: "#c07820" },
     { key: "shop",        label: "Shop",       emoji: "🛒", bg: "#2a1020", border: "#7c3aed" },
     { key: "leaderboard", label: "Ranking",    emoji: "🏆", bg: "#1a1a00", border: "#a16207" },
@@ -842,6 +1107,7 @@ export default function Home() {
           <span style={{ fontSize: 13 }}>🥚 <b style={{ color: "#fbbf24" }}>{Math.floor(eggs).toLocaleString()}</b></span>
           <span style={{ fontSize: 13 }}>🪱 <b style={{ color: "#86efac" }}>{Math.floor(worms)}</b></span>
           <span style={{ fontSize: 13 }}>🐾 <b style={{ color: "#f97316" }}>{cekers}</b></span>
+          <span style={{ fontSize: 13 }}>🪙 <b style={{ color: "#c084fc" }}>{tokens}</b></span>
           <button onClick={() => { initAudio(); setMusicOn(m => !m); }} style={{ background: "none", border: "1px solid #3d3d6e", borderRadius: 8, color: musicOn ? "#fbbf24" : "#666", fontSize: 15, padding: "3px 7px", cursor: "pointer" }}>
             {musicOn ? "🔊" : "🔇"}
           </button>
@@ -865,7 +1131,7 @@ export default function Home() {
           <div style={{ background: "#b45309", padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fef3c7" }}>⚡ x2</div>
         )}
         <div style={{ marginLeft: "auto", background: "#c07820", padding: "3px 9px", borderRadius: 12, border: "1.5px solid #f5c518", fontSize: 10, fontWeight: 700, color: "#fff5cc" }}>
-          🏆 Bronze 1st ▶
+          {getArenaRankInfo().emoji} {getArenaRankInfo().rank} • {arenaPoints}pts
         </div>
       </div>
 
@@ -1310,6 +1576,314 @@ export default function Home() {
                 🗑️ Reset Leaderboard
               </button>
             )}
+          </div>
+        )}
+
+        {/* ── NFT SCREEN ── */}
+        {screen === "nft" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#c084fc" }}>🃏 NFT Chicken</div>
+
+            {/* Element counter guide */}
+            <div style={{ background: "#111130", border: "1px solid #3d1a6e", borderRadius: 14, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 8 }}>⚔️ Counter Elemen</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+                {(Object.entries(ELEMENT_COUNTER) as [Element, Element][]).map(([a, b]) => (
+                  <div key={a} style={{ fontSize: 11, background: "#1e1e40", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{ELEMENT_EMOJI[a]}</span><span style={{ color: "#9ca3af" }}>{a}</span>
+                    <span style={{ color: "#ef4444" }}>▶</span>
+                    <span>{ELEMENT_EMOJI[b]}</span><span style={{ color: "#9ca3af" }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>Counter memberi ×1.5 dmg • F2P tetap bisa menang dengan strategi!</div>
+            </div>
+
+            {/* Mint NFT */}
+            <div style={{ background: "#111130", border: "1px solid #7c3aed", borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🔮 Mint NFT Chicken</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>
+                Biaya: <b style={{ color: "#fbbf24" }}>{NFT_MINT_COST.toLocaleString()} 🥚</b> — Rarity berdasarkan gacha<br />
+                Tier tertinggimu menentukan nama & emoji NFT
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {NFT_RARITY_PROB.map(r => (
+                  <div key={r.rarity} style={{ fontSize: 10, background: "#1e1e40", borderRadius: 6, padding: "3px 8px", color: NFT_RARITY_COLOR[r.rarity] }}>
+                    {r.rarity} {r.prob}%
+                  </div>
+                ))}
+              </div>
+              <button onClick={mintNFT} style={{ ...bStyle("#7c3aed", "#6d28d9") }}>🔮 Mint NFT — {NFT_MINT_COST.toLocaleString()} 🥚</button>
+            </div>
+
+            {/* NFT Collection */}
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#a78bfa" }}>🗂️ Koleksi NFT ({nftChickens.length})</div>
+            {nftChickens.length === 0 ? (
+              <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 20, textAlign: "center", color: "#6b7280", fontSize: 12 }}>
+                Belum punya NFT. Mint sekarang!
+              </div>
+            ) : (
+              nftChickens.map(n => (
+                <div key={n.id} style={{ background: "#111130", border: `1px solid ${NFT_RARITY_COLOR[n.rarity]}55`, borderRadius: 14, padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 24 }}>{n.emoji}</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: NFT_RARITY_COLOR[n.rarity] }}>{n.name}</div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                          {ELEMENT_EMOJI[n.element]} {n.element} • {n.rarity} • Breed {n.breedCount}/5
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 10, background: NFT_RARITY_COLOR[n.rarity] + "22", border: `1px solid ${NFT_RARITY_COLOR[n.rarity]}`, color: NFT_RARITY_COLOR[n.rarity], borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>
+                      {n.rarity}
+                    </div>
+                  </div>
+                  {/* Stats */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, marginBottom: 8 }}>
+                    {([["❤️ HP", n.stats.hp], ["⚔️ ATK", n.stats.attack], ["💨 SPD", n.stats.speed], ["✨ CRIT", `${n.stats.critRate}%`]] as [string,string|number][]).map(([label, val]) => (
+                      <div key={label} style={{ background: "#1e1e40", borderRadius: 6, padding: "4px 6px", textAlign: "center" }}>
+                        <div style={{ fontSize: 9, color: "#6b7280" }}>{label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Skills */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+                    {n.skills.map(s => (
+                      <div key={s} style={{ fontSize: 10, background: "#2a1a4a", border: "1px solid #7c3aed44", borderRadius: 6, padding: "2px 7px", color: "#c084fc" }}>{s}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => { setScreen("arena"); setSelectedNFT(n.id); }} style={{ ...bStyle("#7c0a0a", "#b91c1c"), fontSize: 11, padding: "6px 10px" }}>⚔️ Battle</button>
+                    <button onClick={() => burnNFT(n.id)} style={{ ...bStyle("#3a1a10", "#7c2d12"), fontSize: 11, padding: "6px 10px" }}>🔥 Burn +2🪙</button>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {/* NFT Equipment */}
+            {nftEquipment.length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, fontSize: 12, color: "#fbbf24", marginTop: 4 }}>🛡️ Equipment NFT ({nftEquipment.length})</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {nftEquipment.map(eq => (
+                    <div key={eq.id} style={{ background: "#111130", border: `1px solid ${NFT_RARITY_COLOR[eq.rarity]}55`, borderRadius: 12, padding: 10 }}>
+                      <div style={{ fontSize: 20, textAlign: "center" }}>{EQUIPMENT_EMOJI[eq.type]}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: NFT_RARITY_COLOR[eq.rarity] }}>{eq.type}</div>
+                      <div style={{ fontSize: 10, color: "#9ca3af", textAlign: "center" }}>{eq.rarity}</div>
+                      {eq.statBonus.attack && <div style={{ fontSize: 10, color: "#ef4444", textAlign: "center" }}>+{eq.statBonus.attack} ATK</div>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── ARENA SCREEN ── */}
+        {screen === "arena" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#ef4444" }}>⚔️ Arena PvP</div>
+
+            {/* Rank Card */}
+            <div style={{ background: "#111130", border: `1px solid ${getArenaRankInfo().color}`, borderRadius: 14, padding: 14, textAlign: "center" }}>
+              <div style={{ fontSize: 32 }}>{getArenaRankInfo().emoji}</div>
+              <div style={{ fontWeight: 800, fontSize: 18, color: getArenaRankInfo().color }}>{getArenaRankInfo().rank}</div>
+              <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>{arenaPoints} Poin Arena</div>
+              {/* Rank progress */}
+              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 10 }}>
+                {ARENA_RANKS.map(r => (
+                  <div key={r.rank} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <span style={{ fontSize: 16, opacity: arenaPoints >= r.minPts ? 1 : 0.3 }}>{r.emoji}</span>
+                    <div style={{ fontSize: 9, color: arenaPoints >= r.minPts ? r.color : "#6b7280" }}>{r.rank}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reward info */}
+            <div style={{ background: "#111130", border: "1px solid #1e3a1e", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#86efac", marginBottom: 6 }}>🎁 Reward Menang</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.9 }}>
+                70% reward → Item game (🥚 Telur / NFT Equipment)<br />
+                30% reward → 🪙 Token<br />
+                <span style={{ color: "#6b7280" }}>Tujuan: Ekonomi tetap sehat & tidak cepat rusak</span>
+              </div>
+            </div>
+
+            {/* Select NFT to battle */}
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#f87171" }}>🐓 Pilih NFT untuk Battle</div>
+            {nftChickens.length === 0 ? (
+              <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 20, textAlign: "center", color: "#6b7280", fontSize: 12 }}>
+                Belum punya NFT! Mint dulu di menu NFT 🃏
+              </div>
+            ) : (
+              nftChickens.map(n => (
+                <div key={n.id} style={{
+                  background: selectedNFT === n.id ? "#2a0a10" : "#111130",
+                  border: `1px solid ${selectedNFT === n.id ? "#ef4444" : "#1e1e40"}`,
+                  borderRadius: 14, padding: 12, cursor: "pointer",
+                }} onClick={() => setSelectedNFT(selectedNFT === n.id ? null : n.id)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 22 }}>{n.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: NFT_RARITY_COLOR[n.rarity] }}>{n.name}</div>
+                      <div style={{ fontSize: 11, color: "#9ca3af" }}>{ELEMENT_EMOJI[n.element]} {n.element} • HP:{n.stats.hp} ATK:{n.stats.attack} SPD:{n.stats.speed}</div>
+                    </div>
+                    {selectedNFT === n.id && <span style={{ color: "#ef4444", fontWeight: 700 }}>✓</span>}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {selectedNFT !== null && (
+              <button onClick={() => doBattle(selectedNFT)} disabled={isBattling} style={{
+                ...bStyle("#7c0a0a", "#ef4444"),
+                opacity: isBattling ? 0.6 : 1,
+              }}>
+                {isBattling ? "⏳ Bertarung..." : "⚔️ Mulai Battle!"}
+              </button>
+            )}
+
+            {/* Battle Result */}
+            {battleResult && (
+              <div style={{ background: "#111130", border: `1px solid ${battleResult.win ? "#16a34a" : "#b91c1c"}`, borderRadius: 14, padding: 14 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: battleResult.win ? "#86efac" : "#f87171", textAlign: "center", marginBottom: 10 }}>
+                  {battleResult.win ? "🏆 MENANG!" : "💀 KALAH!"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {battleResult.logs.map((log, i) => (
+                    <div key={i} style={{ fontSize: 11, color: log.round === 99 ? "#fbbf24" : log.round === 0 ? "#c084fc" : "#d1d5db", background: "#1e1e40", borderRadius: 6, padding: "4px 8px" }}>
+                      {log.msg}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── BREED SCREEN ── */}
+        {screen === "breed" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#34d399" }}>🥚 Breeding NFT</div>
+
+            {/* Cost info */}
+            <div style={{ background: "#111130", border: "1px solid #065f46", borderRadius: 14, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399", marginBottom: 8 }}>📋 Syarat Breeding</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 2 }}>
+                • 2 NFT Chicken (masing-masing maks. 5x breed)<br />
+                • <b style={{ color: "#fbbf24" }}>{BREED_EGG_COST.toLocaleString()} 🥚 Telur</b> (dibakar / burn)<br />
+                • <b style={{ color: "#c084fc" }}>{BREED_TOKEN_COST} 🪙 Token</b> (dibakar / burn)<br />
+                • Hasil: 1 NFT Chicken baru (probabilitas random)
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {NFT_RARITY_PROB.map(r => (
+                  <div key={r.rarity} style={{ fontSize: 10, background: NFT_RARITY_COLOR[r.rarity] + "22", border: `1px solid ${NFT_RARITY_COLOR[r.rarity]}44`, borderRadius: 6, padding: "3px 8px", color: NFT_RARITY_COLOR[r.rarity] }}>
+                    {r.rarity} {r.prob}%
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>⚠️ Setiap ayam maks. breeding 5x agar NFT tidak banjir!</div>
+            </div>
+
+            {/* Resource check */}
+            <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 10, display: "flex", gap: 12 }}>
+              <div style={{ fontSize: 12 }}>🥚 <b style={{ color: eggs >= BREED_EGG_COST ? "#86efac" : "#f87171" }}>{Math.floor(eggs).toLocaleString()}</b> / {BREED_EGG_COST.toLocaleString()}</div>
+              <div style={{ fontSize: 12 }}>🪙 <b style={{ color: tokens >= BREED_TOKEN_COST ? "#86efac" : "#f87171" }}>{tokens}</b> / {BREED_TOKEN_COST}</div>
+            </div>
+
+            {/* Select parent A */}
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#86efac" }}>👨 Induk A {breedA !== null ? `— ${nftChickens.find(n => n.id === breedA)?.name ?? ""}` : "(belum dipilih)"}</div>
+            {nftChickens.length === 0 ? (
+              <div style={{ background: "#111130", border: "1px solid #1e1e40", borderRadius: 12, padding: 20, textAlign: "center", color: "#6b7280", fontSize: 12 }}>
+                Belum punya NFT! Mint dulu di menu NFT 🃏
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {nftChickens.map(n => (
+                  <div key={n.id} onClick={() => setBreedA(breedA === n.id ? null : n.id)} style={{
+                    background: breedA === n.id ? "#0a2a1a" : "#111130",
+                    border: `1px solid ${breedA === n.id ? "#34d399" : "#1e1e40"}`,
+                    borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 8, opacity: n.breedCount >= 5 ? 0.4 : 1,
+                  }}>
+                    <span style={{ fontSize: 18 }}>{n.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: NFT_RARITY_COLOR[n.rarity] }}>{n.name}</div>
+                      <div style={{ fontSize: 10, color: "#9ca3af" }}>{ELEMENT_EMOJI[n.element]} {n.element} • Breed {n.breedCount}/5 {n.breedCount >= 5 ? "⛔" : ""}</div>
+                    </div>
+                    {breedA === n.id && <span style={{ color: "#34d399", fontWeight: 700, fontSize: 14 }}>A</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Select parent B */}
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#60a5fa" }}>👩 Induk B {breedB !== null ? `— ${nftChickens.find(n => n.id === breedB)?.name ?? ""}` : "(belum dipilih)"}</div>
+            {nftChickens.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {nftChickens.filter(n => n.id !== breedA).map(n => (
+                  <div key={n.id} onClick={() => setBreedB(breedB === n.id ? null : n.id)} style={{
+                    background: breedB === n.id ? "#0a1a2a" : "#111130",
+                    border: `1px solid ${breedB === n.id ? "#60a5fa" : "#1e1e40"}`,
+                    borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 8, opacity: n.breedCount >= 5 ? 0.4 : 1,
+                  }}>
+                    <span style={{ fontSize: 18 }}>{n.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: NFT_RARITY_COLOR[n.rarity] }}>{n.name}</div>
+                      <div style={{ fontSize: 10, color: "#9ca3af" }}>{ELEMENT_EMOJI[n.element]} {n.element} • Breed {n.breedCount}/5 {n.breedCount >= 5 ? "⛔" : ""}</div>
+                    </div>
+                    {breedB === n.id && <span style={{ color: "#60a5fa", fontWeight: 700, fontSize: 14 }}>B</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={doBreed} disabled={breedA === null || breedB === null} style={{
+              ...bStyle("#065f46", "#059669"),
+              opacity: breedA === null || breedB === null ? 0.4 : 1,
+            }}>
+              🥚 Breed Sekarang — {BREED_EGG_COST.toLocaleString()} 🥚 + {BREED_TOKEN_COST} 🪙
+            </button>
+
+            {/* Breed result */}
+            {breedResult && (
+              <div style={{ background: "#111130", border: `1px solid ${NFT_RARITY_COLOR[breedResult.rarity]}`, borderRadius: 14, padding: 14, textAlign: "center" }}>
+                <div style={{ fontSize: 13, color: "#34d399", fontWeight: 700, marginBottom: 6 }}>🎉 Hasil Breeding!</div>
+                <div style={{ fontSize: 36 }}>{breedResult.emoji}</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: NFT_RARITY_COLOR[breedResult.rarity], marginTop: 4 }}>
+                  {breedResult.rarity} {ELEMENT_EMOJI[breedResult.element]} {breedResult.name}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, marginTop: 10 }}>
+                  {([["❤️ HP", breedResult.stats.hp], ["⚔️ ATK", breedResult.stats.attack], ["💨 SPD", breedResult.stats.speed], ["✨ CRIT", `${breedResult.stats.critRate}%`]] as [string,string|number][]).map(([label, val]) => (
+                    <div key={label} style={{ background: "#1e1e40", borderRadius: 6, padding: "4px", textAlign: "center" }}>
+                      <div style={{ fontSize: 9, color: "#6b7280" }}>{label}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8, justifyContent: "center" }}>
+                  {breedResult.skills.map(s => (
+                    <div key={s} style={{ fontSize: 10, background: "#2a1a4a", border: "1px solid #7c3aed44", borderRadius: 6, padding: "2px 7px", color: "#c084fc" }}>{s}</div>
+                  ))}
+                </div>
+                <button onClick={() => setBreedResult(null)} style={{ ...bStyle("#1e1e40", "#3d3d6e"), marginTop: 10, fontSize: 11 }}>✕ Tutup</button>
+              </div>
+            )}
+
+            {/* Economy info */}
+            <div style={{ background: "#0a1a10", border: "1px solid #065f46", borderRadius: 12, padding: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399", marginBottom: 6 }}>🔥 Burn Mechanic</div>
+              <div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.8 }}>
+                Breeding bakar token → ekonomi sehat<br />
+                Upgrade kandang → bakar telur<br />
+                Masuk turnamen → biaya tiket<br />
+                <span style={{ color: "#4a7a4a" }}>Tanpa burn = token inflasi 📉</span>
+              </div>
+            </div>
           </div>
         )}
 
