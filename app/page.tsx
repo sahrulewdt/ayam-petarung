@@ -154,6 +154,12 @@ type Toast = {
   tone: "success" | "error" | "info";
 };
 
+type BattleFx = {
+  id: number;
+  kind: "slash" | "skill" | "heal" | "hit";
+  label: string;
+};
+
 const SAVE_KEY = "dragon-nest-character";
 const DUNGEON_ENERGY_COST = 8;
 const NEST_ENERGY_COST = 15;
@@ -470,6 +476,87 @@ function ProgressBar({ value, tone = "normal" }: { value: number; tone?: "normal
   );
 }
 
+function classVisual(className?: HeroClass) {
+  if (className === "Archer") return { weapon: "bow", color: "#22d3ee", accent: "#a7f3d0" };
+  if (className === "Sorceress") return { weapon: "orb", color: "#c084fc", accent: "#f0abfc" };
+  if (className === "Cleric") return { weapon: "shield", color: "#facc15", accent: "#93c5fd" };
+  if (className === "Assassin") return { weapon: "blade", color: "#fb7185", accent: "#c4b5fd" };
+  return { weapon: "sword", color: "#38bdf8", accent: "#f97316" };
+}
+
+function monsterVisual(monster: Monster) {
+  return monster.boss ? { scale: "boss", color: "#dc2626", accent: "#f59e0b" } : { scale: "mob", color: "#7c3aed", accent: "#22c55e" };
+}
+
+function BattleArena({
+  character,
+  monster,
+  fx,
+  playerHpPercent,
+  monsterHpPercent,
+  statusLabel,
+}: {
+  character: PlayerCharacter | null;
+  monster: Monster;
+  fx: BattleFx | null;
+  playerHpPercent: number;
+  monsterHpPercent: number;
+  statusLabel?: string;
+}) {
+  const hero = classVisual(character?.class);
+  const enemy = monsterVisual(monster);
+  const lowHp = playerHpPercent < 35;
+  const monsterLowHp = monsterHpPercent < 35;
+
+  return (
+    <div className="game-arena" aria-label="Battle arena">
+      <div className="arena-sky" />
+      <div className="arena-rain arena-rain-one" />
+      <div className="arena-rain arena-rain-two" />
+      <div className="arena-floor">
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <div className={`hero-sprite ${fx?.kind === "slash" || fx?.kind === "skill" ? "hero-attacking" : ""} ${fx?.kind === "hit" ? "hero-hurt" : ""} ${lowHp ? "sprite-danger" : ""}`}>
+        <div className="sprite-shadow" />
+        <div className="hero-aura" style={{ background: hero.color }} />
+        <div className="hero-body" style={{ background: hero.color }}>
+          <span className="hero-head" />
+          <span className={`hero-weapon hero-${hero.weapon}`} style={{ borderColor: hero.accent, background: hero.accent }} />
+        </div>
+        <div className="name-plate">{character?.name ?? "Hero"}</div>
+      </div>
+
+      <div className={`monster-sprite monster-${enemy.scale} ${fx?.kind === "slash" || fx?.kind === "skill" ? "monster-hit" : ""} ${fx?.kind === "hit" ? "monster-attacking" : ""} ${monsterLowHp ? "sprite-danger" : ""}`}>
+        <div className="sprite-shadow" />
+        <div className="monster-body" style={{ background: enemy.color }}>
+          <span className="monster-eye left" />
+          <span className="monster-eye right" />
+          <span className="monster-horn horn-left" style={{ borderBottomColor: enemy.accent }} />
+          <span className="monster-horn horn-right" style={{ borderBottomColor: enemy.accent }} />
+        </div>
+        <div className="name-plate">{monster.name}</div>
+      </div>
+
+      {fx && fx.kind !== "heal" && (
+        <div key={fx.id} className={`battle-fx ${fx.kind === "skill" ? "fx-orb" : "fx-slash"}`}>
+          <span>{fx.label}</span>
+        </div>
+      )}
+
+      {fx?.kind === "heal" && (
+        <div key={fx.id} className="heal-fx">
+          <span>{fx.label}</span>
+        </div>
+      )}
+
+      {statusLabel && <div className="battle-status">{statusLabel}</div>}
+    </div>
+  );
+}
+
 export default function DragonNestCharacterRpg() {
   const [screen, setScreen] = useState<Screen>("character-create");
   const [character, setCharacter] = useState<PlayerCharacter | null>(null);
@@ -498,6 +585,7 @@ export default function DragonNestCharacterRpg() {
   const [tutorialDone, setTutorialDone] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [battle, setBattle] = useState<BattleState | null>(null);
+  const [battleFx, setBattleFx] = useState<BattleFx | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   const playerPower = useMemo(() => totalCharacterPower(character, equipment, pet), [character, equipment, pet]);
@@ -616,8 +704,18 @@ export default function DragonNestCharacterRpg() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (!battleFx) return;
+    const timer = window.setTimeout(() => setBattleFx(null), 720);
+    return () => window.clearTimeout(timer);
+  }, [battleFx]);
+
   function notify(message: string, tone: Toast["tone"] = "info") {
     setToast({ message, tone });
+  }
+
+  function playBattleFx(kind: BattleFx["kind"], label: string) {
+    setBattleFx({ id: Date.now(), kind, label });
   }
 
   function createCharacter() {
@@ -693,6 +791,7 @@ export default function DragonNestCharacterRpg() {
       started: true,
       sourceStage: stage,
     });
+    setBattleFx(null);
     setScreen("battle");
   }
 
@@ -713,6 +812,7 @@ export default function DragonNestCharacterRpg() {
       started: true,
       sourceRaid: raid,
     });
+    setBattleFx(null);
     setScreen("battle");
   }
 
@@ -733,6 +833,7 @@ export default function DragonNestCharacterRpg() {
       started: true,
       jobName: job.name,
     });
+    setBattleFx(null);
     setScreen("battle");
   }
 
@@ -763,6 +864,7 @@ export default function DragonNestCharacterRpg() {
       setScreen("skills");
     }
     setBattle(null);
+    setBattleFx(null);
   }
 
   function monsterTurn(nextBattle: BattleState, incomingLog: string[]) {
@@ -771,6 +873,7 @@ export default function DragonNestCharacterRpg() {
     const damage = blocked ? Math.floor(monster.attack * 0.35) : monster.attack;
     const playerHp = Math.max(0, nextBattle.playerHp - damage);
     const log = [...incomingLog, `${monster.name} menyerang ${damage} damage${blocked ? " (block)" : ""}.`].slice(-5);
+    window.setTimeout(() => playBattleFx("hit", blocked ? "BLOCK" : `${damage}`), 360);
     if (playerHp <= 0) {
       setBattle({ ...nextBattle, playerHp, log: [...log, "Kamu tumbang. Upgrade gear atau skill dulu."].slice(-5) });
       notify("Battle gagal.", "error");
@@ -785,6 +888,7 @@ export default function DragonNestCharacterRpg() {
     const damage = Math.max(1, Math.floor(rawDamage * (0.9 + Math.random() * 0.22)));
     const remainingHp = Math.max(0, battle.monsterHp - damage);
     const log = [`${source} mengenai ${monster.name}: ${damage} damage.`, ...battle.log].slice(0, 5);
+    playBattleFx(source === "Attack" ? "slash" : "skill", `${damage}`);
 
     if (remainingHp > 0) {
       monsterTurn({ ...battle, monsterHp: remainingHp }, log);
@@ -815,6 +919,7 @@ export default function DragonNestCharacterRpg() {
     if (skill.kind === "heal") {
       const heal = Math.floor(skill.damage + playerAttack * 0.35);
       const playerHp = Math.min(battle.maxPlayerHp, battle.playerHp + heal);
+      playBattleFx("heal", `+${heal}`);
       monsterTurn({ ...battle, playerHp }, [`${skill.name} memulihkan ${heal} HP.`, ...battle.log].slice(0, 5));
       return;
     }
@@ -860,6 +965,7 @@ export default function DragonNestCharacterRpg() {
   function enterArena() {
     if (!character) return;
     const win = playerPower >= 1600 || Math.random() > 0.38;
+    playBattleFx(win ? "slash" : "hit", win ? "CRIT" : "COUNTER");
     if (win) {
       setArenaRank((rank) => Math.max(1, rank - Math.floor(70 + Math.random() * 140)));
       setGold((value) => value + 260);
@@ -895,6 +1001,7 @@ export default function DragonNestCharacterRpg() {
   function guildRaid() {
     if (!guild) return;
     const damage = Math.floor(playerPower * 1.35);
+    playBattleFx("skill", `${compactNumber(damage)}`);
     setGuild((value) => (value ? { ...value, raidDamage: value.raidDamage + damage } : value));
     setGold((value) => value + 180);
     notify(`Guild Raid damage ${compactNumber(damage)}.`, "success");
@@ -1044,6 +1151,14 @@ export default function DragonNestCharacterRpg() {
           <div style={barLabel}><span>{monster.name} HP</span><span>{compactNumber(battle.monsterHp)}/{compactNumber(monster.hp)}</span></div>
           <ProgressBar value={monsterPercent} tone={monster.boss ? "boss" : "danger"} />
         </div>
+        <BattleArena
+          character={character}
+          monster={monster}
+          fx={battleFx}
+          playerHpPercent={hpPercent}
+          monsterHpPercent={monsterPercent}
+          statusLabel={battleFx ? battleFx.label : "Ready"}
+        />
         <div style={{ marginTop: 12 }}>
           <div style={barLabel}><span>{character?.name} HP</span><span>{compactNumber(battle.playerHp)}/{compactNumber(battle.maxPlayerHp)}</span></div>
           <ProgressBar value={hpPercent} />
@@ -1054,7 +1169,7 @@ export default function DragonNestCharacterRpg() {
           {skills.slice(0, 3).map((skill) => (
             <Button key={skill.name} onClick={() => castSkill(skill)} disabled={battle.playerHp <= 0} tone={skill.kind === "heal" ? "quiet" : "primary"}>{skill.name}</Button>
           ))}
-          {battle.playerHp <= 0 && <Button onClick={() => setBattle(null)} tone="danger">Leave Battle</Button>}
+          {battle.playerHp <= 0 && <Button onClick={() => { setBattle(null); setBattleFx(null); }} tone="danger">Leave Battle</Button>}
         </div>
 
         <div style={{ ...sectionTitle, marginTop: 16 }}>Battle Log</div>
@@ -1154,6 +1269,7 @@ export default function DragonNestCharacterRpg() {
   }
 
   function renderArena() {
+    const arenaMonster: Monster = { name: "Arena Rival", hp: 2600, attack: 230, exp: 0, gold: 0 };
     return (
       <section style={panel}>
         <div style={sectionTitle}>PvP Arena</div>
@@ -1162,12 +1278,21 @@ export default function DragonNestCharacterRpg() {
           <StatPill label="Power" value={compactNumber(playerPower)} />
           <StatPill label="Class" value={character?.job ?? "-"} />
         </section>
+        <BattleArena
+          character={character}
+          monster={arenaMonster}
+          fx={battleFx}
+          playerHpPercent={battleFx?.kind === "hit" ? 68 : 100}
+          monsterHpPercent={battleFx?.kind === "slash" ? 42 : 100}
+          statusLabel={battleFx ? (battleFx.kind === "hit" ? "Counter!" : "Opening Strike!") : "Waiting for match"}
+        />
         <Button onClick={enterArena}>Start Match</Button>
       </section>
     );
   }
 
   function renderGuild() {
+    const guildMonster: Monster = { name: "Guild Raid Boss", hp: 4800, attack: 310, exp: 0, gold: 0, boss: true };
     return (
       <section style={panel}>
         <div style={sectionTitle}>Guild</div>
@@ -1188,6 +1313,14 @@ export default function DragonNestCharacterRpg() {
               <Button onClick={guildRaid}>Guild Raid</Button>
               <Button onClick={donateGuild} tone="quiet">Guild Donation</Button>
             </div>
+            <BattleArena
+              character={character}
+              monster={guildMonster}
+              fx={battleFx}
+              playerHpPercent={100}
+              monsterHpPercent={battleFx?.kind === "skill" ? 58 : 100}
+              statusLabel={battleFx ? "Guild Burst!" : "Raid training ground"}
+            />
           </div>
         )}
       </section>

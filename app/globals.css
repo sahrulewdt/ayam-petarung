@@ -24,3 +24,566 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.game-arena {
+  position: relative;
+  height: 236px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(56, 189, 248, 0.18), transparent 26%),
+    linear-gradient(180deg, #172554 0%, #111827 58%, #0f172a 100%);
+  isolation: isolate;
+}
+
+.arena-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(250, 204, 21, 0.18), transparent 10%),
+    radial-gradient(circle at 74% 22%, rgba(125, 211, 252, 0.18), transparent 13%);
+  animation: arena-pulse 3.8s ease-in-out infinite;
+}
+
+.arena-rain {
+  position: absolute;
+  inset: -60px 0 0;
+  opacity: 0.24;
+  background-image: linear-gradient(115deg, transparent 0 46%, rgba(186, 230, 253, 0.42) 47% 50%, transparent 51% 100%);
+  background-size: 34px 34px;
+  animation: rain-shift 1.2s linear infinite;
+}
+
+.arena-rain-two {
+  opacity: 0.16;
+  background-size: 48px 48px;
+  animation-duration: 1.8s;
+}
+
+.arena-floor {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: -32px;
+  height: 102px;
+  transform: perspective(210px) rotateX(48deg);
+  background:
+    linear-gradient(90deg, rgba(45, 212, 191, 0.18) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(45, 212, 191, 0.18) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(15, 118, 110, 0.38), rgba(2, 6, 23, 0.9));
+  background-size: 34px 34px;
+}
+
+.arena-floor span {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: rgba(125, 211, 252, 0.24);
+}
+
+.arena-floor span:nth-child(1) {
+  top: 26px;
+}
+
+.arena-floor span:nth-child(2) {
+  top: 52px;
+}
+
+.arena-floor span:nth-child(3) {
+  top: 78px;
+}
+
+.hero-sprite,
+.monster-sprite {
+  position: absolute;
+  bottom: 34px;
+  z-index: 2;
+  width: 96px;
+  height: 118px;
+  animation: sprite-idle 1.35s ease-in-out infinite;
+}
+
+.hero-sprite {
+  left: 32px;
+}
+
+.monster-sprite {
+  right: 28px;
+  animation-delay: -0.45s;
+}
+
+.monster-boss {
+  width: 118px;
+  height: 134px;
+  bottom: 28px;
+}
+
+.sprite-shadow {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  filter: blur(2px);
+}
+
+.hero-aura {
+  position: absolute;
+  left: 20px;
+  bottom: 24px;
+  width: 58px;
+  height: 76px;
+  border-radius: 999px;
+  opacity: 0.16;
+  filter: blur(12px);
+  animation: aura-breathe 1.7s ease-in-out infinite;
+}
+
+.hero-body,
+.monster-body {
+  position: absolute;
+  left: 28px;
+  bottom: 20px;
+  width: 46px;
+  height: 70px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 -12px 0 rgba(15, 23, 42, 0.26), 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.hero-body {
+  border-radius: 18px 18px 12px 12px;
+}
+
+.monster-body {
+  width: 64px;
+  height: 76px;
+  left: 18px;
+  border-radius: 24px 24px 16px 16px;
+}
+
+.monster-boss .monster-body {
+  width: 82px;
+  height: 92px;
+  left: 18px;
+}
+
+.hero-head {
+  position: absolute;
+  left: 8px;
+  top: -24px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fed7aa;
+  border: 2px solid rgba(255, 255, 255, 0.48);
+}
+
+.hero-weapon {
+  position: absolute;
+  right: -18px;
+  top: 16px;
+  width: 10px;
+  height: 54px;
+  border-radius: 8px;
+  transform: rotate(-28deg);
+  box-shadow: 0 0 18px currentColor;
+}
+
+.hero-bow {
+  width: 34px;
+  height: 54px;
+  background: transparent !important;
+  border: 4px solid;
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+.hero-orb {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  transform: none;
+  top: 8px;
+}
+
+.hero-shield {
+  width: 28px;
+  height: 38px;
+  border-radius: 14px 14px 18px 18px;
+  transform: none;
+  right: -16px;
+}
+
+.hero-blade {
+  width: 8px;
+  height: 42px;
+  border-radius: 999px 999px 4px 4px;
+}
+
+.monster-eye {
+  position: absolute;
+  top: 22px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #fef2f2;
+  box-shadow: 0 0 10px #fef2f2;
+}
+
+.monster-eye.left {
+  left: 18px;
+}
+
+.monster-eye.right {
+  right: 18px;
+}
+
+.monster-horn {
+  position: absolute;
+  top: -18px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 24px solid #f59e0b;
+}
+
+.horn-left {
+  left: 8px;
+  transform: rotate(-28deg);
+}
+
+.horn-right {
+  right: 8px;
+  transform: rotate(28deg);
+}
+
+.name-plate {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  max-width: 118px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px #020617;
+  white-space: nowrap;
+}
+
+.hero-attacking {
+  animation: hero-strike 0.38s ease-out, sprite-idle 1.35s ease-in-out 0.38s infinite;
+}
+
+.hero-hurt {
+  animation: hero-hurt 0.36s ease-out, sprite-idle 1.35s ease-in-out 0.36s infinite;
+}
+
+.monster-hit {
+  animation: monster-hit 0.34s ease-out, sprite-idle 1.35s ease-in-out 0.34s infinite;
+}
+
+.monster-attacking {
+  animation: monster-lunge 0.42s ease-out, sprite-idle 1.35s ease-in-out 0.42s infinite;
+}
+
+.sprite-danger .hero-body,
+.sprite-danger .monster-body {
+  filter: saturate(1.2) drop-shadow(0 0 12px rgba(248, 113, 113, 0.72));
+}
+
+.battle-fx {
+  position: absolute;
+  left: 40%;
+  top: 76px;
+  z-index: 4;
+  width: 104px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: #fff7ed;
+  font-size: 18px;
+  font-weight: 950;
+  text-shadow: 0 2px 8px #7f1d1d;
+  animation: fx-fly 0.62s ease-out forwards;
+}
+
+.battle-fx::before {
+  position: absolute;
+  inset: 14px 0;
+  content: "";
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(251, 146, 60, 0.95), transparent);
+  transform: rotate(-18deg);
+}
+
+.battle-fx span,
+.heal-fx span {
+  position: relative;
+  z-index: 1;
+}
+
+.fx-orb::before {
+  inset: 6px 26px;
+  background: radial-gradient(circle, #f0abfc, #7dd3fc 62%, transparent 66%);
+  transform: none;
+}
+
+.fx-orb {
+  color: #e0f2fe;
+  text-shadow: 0 0 12px #38bdf8;
+}
+
+.heal-fx {
+  position: absolute;
+  left: 64px;
+  top: 72px;
+  z-index: 4;
+  color: #bbf7d0;
+  font-size: 20px;
+  font-weight: 950;
+  text-shadow: 0 0 12px #16a34a;
+  animation: heal-rise 0.72s ease-out forwards;
+}
+
+.heal-fx::before {
+  position: absolute;
+  inset: -18px -24px;
+  content: "";
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.32), transparent 66%);
+}
+
+.battle-status {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  z-index: 5;
+  max-width: 72%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.68);
+  color: #e0f2fe;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  padding: 5px 10px;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+  white-space: nowrap;
+  animation: status-pop 0.28s ease-out;
+}
+
+@keyframes arena-pulse {
+  0%,
+  100% {
+    opacity: 0.74;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes rain-shift {
+  from {
+    transform: translate3d(0, -34px, 0);
+  }
+
+  to {
+    transform: translate3d(-34px, 34px, 0);
+  }
+}
+
+@keyframes sprite-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes aura-breathe {
+  0%,
+  100% {
+    opacity: 0.13;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 0.28;
+    transform: scale(1.14);
+  }
+}
+
+@keyframes hero-strike {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+
+  55% {
+    transform: translateX(82px) translateY(-8px);
+  }
+
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes hero-hurt {
+  0%,
+  100% {
+    transform: translateX(0);
+    filter: none;
+  }
+
+  24% {
+    transform: translateX(-16px) rotate(-2deg);
+    filter: drop-shadow(0 0 12px rgba(248, 113, 113, 0.9));
+  }
+
+  54% {
+    transform: translateX(8px) rotate(1deg);
+  }
+}
+
+@keyframes monster-hit {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  28% {
+    transform: translateX(14px) rotate(2deg);
+  }
+
+  58% {
+    transform: translateX(-8px) rotate(-1deg);
+  }
+}
+
+@keyframes monster-lunge {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+
+  45% {
+    transform: translateX(-72px) translateY(-5px) scale(1.03);
+  }
+
+  70% {
+    transform: translateX(-22px) translateY(0);
+  }
+}
+
+@keyframes fx-fly {
+  0% {
+    opacity: 0;
+    transform: translateX(-70px) scale(0.72);
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(92px) scale(1.18);
+  }
+}
+
+@keyframes status-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes heal-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.72);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1.16);
+  }
+}
+
+@media (max-width: 390px) {
+  .hero-sprite {
+    left: 18px;
+  }
+
+  .monster-sprite {
+    right: 14px;
+  }
+
+  @keyframes hero-strike {
+    0% {
+      transform: translateX(0) translateY(0);
+    }
+
+    55% {
+      transform: translateX(58px) translateY(-8px);
+    }
+
+    100% {
+      transform: translateX(0) translateY(0);
+    }
+  }
+
+  @keyframes monster-lunge {
+    0%,
+    100% {
+      transform: translateX(0) translateY(0);
+    }
+
+    45% {
+      transform: translateX(-50px) translateY(-5px) scale(1.03);
+    }
+
+    70% {
+      transform: translateX(-18px) translateY(0);
+    }
+  }
+}
